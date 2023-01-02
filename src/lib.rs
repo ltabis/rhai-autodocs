@@ -34,6 +34,14 @@ struct ModuleMetadata {
     modules: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
+impl ModuleMetadata {
+    pub fn fmt_doc_comments(&self) -> Option<String> {
+        self.doc
+            .clone()
+            .map(|dc| remove_test_code(&fmt_doc_comments(dc)))
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct FunctionMetadata {
@@ -51,36 +59,38 @@ struct FunctionMetadata {
 
 impl FunctionMetadata {
     pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc_comments.clone().map(|dc| {
-            let dc = dc
-                .join("\n")
-                .replace("/// ", "")
-                .replace("///", "")
-                .replace("/**", "")
-                .replace("**/", "")
-                .replace("**/", "");
-
-            Self::remove_test_code(&dc)
-        })
+        self.doc_comments
+            .clone()
+            .map(|dc| remove_test_code(&fmt_doc_comments(dc.join("\n"))))
     }
+}
+/// Remove doc comments identifiers.
+fn fmt_doc_comments(dc: String) -> String {
+    dc.replace("/// ", "")
+        .replace("///", "")
+        .replace("/**", "")
+        .replace("**/", "")
+        .replace("**/", "")
+}
 
-    fn remove_test_code(doc_comments: &str) -> String {
-        let mut formatted = vec![];
-        let mut in_code_block = false;
-        for line in doc_comments.lines() {
-            if line.trim() == "```" {
-                in_code_block = !in_code_block;
-                formatted.push(line);
-                continue;
-            }
-
-            if !(in_code_block && line.starts_with('#') && !line.starts_with("#{")) {
-                formatted.push(line);
-            }
+/// NOTE: might be useless because mdbook seems to handle this.
+///       to keep in case we migrate to another md processor.
+fn remove_test_code(doc_comments: &str) -> String {
+    let mut formatted = vec![];
+    let mut in_code_block = false;
+    for line in doc_comments.lines() {
+        if line.trim() == "```" {
+            in_code_block = !in_code_block;
+            formatted.push(line);
+            continue;
         }
 
-        formatted.join("\n")
+        if !(in_code_block && line.starts_with('#') && !line.starts_with("#{")) {
+            formatted.push(line);
+        }
     }
+
+    formatted.join("\n")
 }
 
 /// Generate documentation based on an engine instance.
@@ -116,7 +126,7 @@ fn generate_module_documentation(
         documentation: format!(
             "# {namespace}\n\n{}",
             metadata
-                .doc
+                .fmt_doc_comments()
                 .map_or_else(String::default, |doc| format!("{doc}\n\n"))
         ),
     };
