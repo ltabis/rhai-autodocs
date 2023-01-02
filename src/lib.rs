@@ -103,7 +103,6 @@ pub fn generate_documentation(
         serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(|error| error.to_string())?;
 
     generate_module_documentation(&engine, "global", metadata)
-    // generate_module_variables(&modules);
 }
 
 fn generate_module_documentation(
@@ -122,24 +121,30 @@ fn generate_module_documentation(
         ),
     };
 
-    if let Some(mut functions) = metadata.functions {
-        functions.sort_by(|a, b| a.name.cmp(&b.name));
+    if let Some(functions) = metadata.functions {
+        let mut fn_groups = std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
 
-        let mut functions = functions.iter();
-
-        while let Some(metadata) = functions.next() {
-            let mut polymorphisms = vec![];
-
-            for polymorphism in &mut functions {
-                if polymorphism.name == metadata.name {
-                    polymorphisms.push(polymorphism);
-                } else {
-                    break;
+        functions.iter().for_each(|metadata| {
+            match fn_groups.get_mut(&metadata.name) {
+                Some(polymorphisms) => polymorphisms.push(metadata),
+                None => {
+                    fn_groups.insert(metadata.name.clone(), vec![metadata]);
                 }
-            }
+            };
+        });
 
-            if let Some(fn_doc) = generate_function_documentation(engine, metadata, &polymorphisms)
-            {
+        let mut fn_groups = fn_groups
+            .iter()
+            .map(|(name, polymorphisms)| (name, polymorphisms))
+            .collect::<Vec<_>>();
+        fn_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        for (name, polymorphisms) in fn_groups {
+            if let Some(fn_doc) = generate_function_documentation(
+                engine,
+                &name.replace("get$", "").replace("set$", ""),
+                &polymorphisms[..],
+            ) {
                 md.documentation += &fn_doc;
             }
         }
@@ -152,7 +157,7 @@ fn generate_module_documentation(
                 &format!("{namespace}::{sub_module}"),
                 serde_json::from_value::<ModuleMetadata>(value)
                     .map_err(|error| error.to_string())?,
-            )?)
+            )?);
         }
     }
 
@@ -161,13 +166,13 @@ fn generate_module_documentation(
 
 fn generate_function_documentation(
     engine: &rhai::Engine,
-    metadata: &FunctionMetadata,
+    name: &str,
     polymorphisms: &[&FunctionMetadata],
 ) -> Option<String> {
-    let name = metadata.name.replace("get$", "").replace("set$", "");
+    let metadata = polymorphisms.first().expect("will never be empty");
     let root_definition = generate_function_definition(engine, metadata);
 
-    if !name.starts_with("anon") {
+    if !name.starts_with("anon$") {
         Some(format!(
             r#"
 <div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
@@ -175,7 +180,6 @@ fn generate_function_documentation(
 <h2 class="func-name"> <code>{}</code> {} </h2>
 
 ```rust,ignore
-{}
 {}
 ```
 {}
@@ -192,7 +196,6 @@ fn generate_function_documentation(
                 "fn"
             },
             name,
-            root_definition,
             polymorphisms
                 .iter()
                 .map(|metadata| generate_function_definition(engine, metadata))
@@ -315,57 +318,3 @@ fn remove_result(ty: &str) -> &str {
     }
     .map_or(ty, str::trim)
 }
-
-// fn generate_module_variables(modules: &[(String, rhai::Shared<rhai::Module>)]) {
-//     for (name, module) in modules {
-//         let variables = generate_variables_documentation(module);
-
-//         if let Some(variables) = variables {
-//             let path = std::path::PathBuf::from_iter([
-//                 std::env::var("DOCS_DIR").unwrap(),
-//                 format!("var::{name}.md"),
-//             ]);
-
-//             let mut writer = std::fs::File::create(&path).unwrap();
-
-//             writeln!(writer, "{variables}").expect("failed to write variables to {path}");
-//         }
-//     }
-// }
-
-// fn generate_variables_documentation(module: &rhai::Module) -> Option<String> {
-//     fn format_value(value: &rhai::Dynamic) -> String {
-//         if value.is::<rhai::Array>() {
-//             let mut formatted = String::from("[");
-//             for (count, item) in value.clone_cast::<rhai::Array>().iter().enumerate() {
-//                 formatted += &format!(
-//                     "{}{}",
-//                     if count != 0 { ", " } else { "" },
-//                     format_value(item)
-//                 );
-//             }
-//             formatted + "]"
-//         } else if value.is::<SharedObject>() {
-//             format!("{:#?}", *value.clone_cast::<SharedObject>())
-//         } else {
-//             format!("{:#?}", value)
-//         }
-//     }
-
-//     let (var_count, _, _) = module.count();
-
-//     if var_count == 0 {
-//         return None;
-//     }
-
-//     let mut variables_doc = Vec::with_capacity(var_count);
-
-//     for (name, value) in module.iter_var() {
-//         variables_doc.push(format!(
-//             "# `{name}`\n\n```rust\nlet {name} = {}\n```",
-//             format_value(value)
-//         ));
-//     }
-
-//     Some(variables_doc.join("\n"))
-// }
