@@ -2,7 +2,20 @@
 name = "rhai-autodocs"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["Lucas Tabis"]
+description = "Custom documentation generator for the Rhai scripting language"
+homepage = "https://github.com/ltabis/rhai-autodocs"
+repository = "https://github.com/ltabis/rhai-autodocs"
+readme = "README.md"
+license = "MIT"
+include = ["/src/**/*", "/Cargo.toml", "/README.md", "LICENSE*"]
+keywords = [
+    "scripting",
+    "scripting-engine",
+    "scripting-language",
+    "documentation",
+]
+categories = ["documentation"]
 
 [dependencies]
 rhai = { version = "1.11.0", features = ["metadata"] }
