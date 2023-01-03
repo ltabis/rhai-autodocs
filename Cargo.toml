@@ -15,7 +15,7 @@ keywords = [
     "scripting-language",
     "documentation",
 ]
-categories = ["documentation"]
+categories = ["development-tools"]
 
 [dependencies]
 rhai = { version = "1.11.0", features = ["metadata"] }
