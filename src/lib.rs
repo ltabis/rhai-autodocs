@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use serde::{Deserialize, Serialize};
 
 /// Rhai module documentation in markdown format.
@@ -10,14 +12,20 @@ pub struct ModuleDocumentation {
     pub documentation: String,
 }
 
+/// Intermediatory representation of the documentation.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ModuleMetadata {
+    /// Optional documentation for the module.
     doc: Option<String>,
+    /// Functions metadata, if any.
     functions: Option<Vec<FunctionMetadata>>,
+    /// Sub-modules, if any, stored as raw json values.
     modules: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl ModuleMetadata {
+    /// Format the module doc comments to make them
+    /// readable markdown.
     pub fn fmt_doc_comments(&self) -> Option<String> {
         self.doc
             .clone()
@@ -41,12 +49,15 @@ struct FunctionMetadata {
 }
 
 impl FunctionMetadata {
+    /// Format the function doc comments to make them
+    /// readable markdown.
     pub fn fmt_doc_comments(&self) -> Option<String> {
         self.doc_comments
             .clone()
             .map(|dc| remove_test_code(&fmt_doc_comments(dc.join("\n"))))
     }
 }
+
 /// Remove doc comments identifiers.
 fn fmt_doc_comments(dc: String) -> String {
     dc.replace("/// ", "")
@@ -56,8 +67,8 @@ fn fmt_doc_comments(dc: String) -> String {
         .replace("**/", "")
 }
 
-/// NOTE: might be useless because mdbook seems to handle this.
-///       to keep in case we migrate to another md processor.
+/// NOTE: mdbook handles this automatically, but other
+///       markdown processors might not.
 fn remove_test_code(doc_comments: &str) -> String {
     let mut formatted = vec![];
     let mut in_code_block = false;
@@ -83,7 +94,8 @@ fn remove_test_code(doc_comments: &str) -> String {
 /// * A vector of documented modules.
 ///
 /// # Errors
-/// *
+/// * Failed to generate function metadata as json.
+/// * Failed to parse module metadata.
 pub fn generate_documentation(
     engine: &rhai::Engine,
     include_standard_packages: bool,
@@ -117,6 +129,7 @@ fn generate_module_documentation(
     if let Some(functions) = metadata.functions {
         let mut fn_groups = std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
 
+        // Rhai function can be polymorphes, so we group them by name.
         functions.iter().for_each(|metadata| {
             match fn_groups.get_mut(&metadata.name) {
                 Some(polymorphisms) => polymorphisms.push(metadata),
@@ -126,12 +139,34 @@ fn generate_module_documentation(
             };
         });
 
+        // Sort functions signatures by alphabetical order.
+        // TODO: Make this an option so user can choose the order of the functions in the documentation.
         let mut fn_groups = fn_groups
             .iter()
             .map(|(name, polymorphisms)| (name, polymorphisms))
             .collect::<Vec<_>>();
         fn_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
 
+        // Generate a clean documentation for each functions.
+        // Functions that share the same name will keep only
+        // one documentation, the others will be dropped.
+        //
+        // This means that:
+        // ```rust
+        // /// doc 1
+        // fn my_func(a: int)`
+        // ```
+        // and
+        // ```rust
+        // /// doc 2
+        // fn my_func(a: int, b: int)`
+        // ```
+        // will be written as the following:
+        // ```rust
+        // /// doc 1
+        // fn my_func(a: int);
+        // fn my_func(a: int, b: int);
+        // ```
         for (name, polymorphisms) in fn_groups {
             if let Some(fn_doc) = generate_function_documentation(
                 engine,
@@ -143,6 +178,7 @@ fn generate_module_documentation(
         }
     }
 
+    // Generate documentation for each submodule. (if any)
     if let Some(sub_modules) = metadata.modules {
         for (sub_module, value) in sub_modules {
             md.sub_modules.push(generate_module_documentation(
@@ -157,6 +193,8 @@ fn generate_module_documentation(
     Ok(md)
 }
 
+/// Generate markdown/html documentation for a function.
+/// TODO: Add other word processors.
 fn generate_function_documentation(
     engine: &rhai::Engine,
     name: &str,
@@ -165,6 +203,7 @@ fn generate_function_documentation(
     let metadata = polymorphisms.first().expect("will never be empty");
     let root_definition = generate_function_definition(engine, metadata);
 
+    // Anonymous functions are ignored.
     if !name.starts_with("anon$") {
         Some(format!(
             r#"
@@ -179,6 +218,7 @@ fn generate_function_documentation(
 </div>
 </br>
 "#,
+            // Add a specific prefix for the function type documented.
             if root_definition.starts_with("op") {
                 "op"
             } else if root_definition.starts_with("fn get ") {
@@ -218,13 +258,17 @@ fn is_operator(name: &str) -> bool {
         .any(|op| op == name)
 }
 
+/// Generate a pseudo-Rust definition of a rhai function.
+/// e.g. `fn my_func(a: int) -> ()`
 fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetadata) -> String {
+    // Add the operator / function prefix.
     let mut definition = if is_operator(&metadata.name) {
         String::from("op ")
     } else {
         String::from("fn ")
     };
 
+    // Add getter and setter prefix + the name of the function.
     if let Some(name) = metadata.name.strip_prefix("get$") {
         definition += &format!("get {name}(");
     } else if let Some(name) = metadata.name.strip_prefix("set$") {
@@ -235,6 +279,7 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
 
     let mut first = true;
 
+    // Add params with their types.
     for i in 0..metadata.num_params {
         if !first {
             definition += ", ";
@@ -258,6 +303,7 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
         definition += &format!("{param_name}: {param_type}");
     }
 
+    // Add an eventual return type.
     if let Some(return_type) = &metadata.return_type {
         definition + format!(") -> {}", def_type_name(return_type, engine)).as_str()
     } else {
@@ -265,6 +311,11 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
     }
 }
 
+/// This is the code a private function in the rhai crate. It is used to map
+/// "Rust" types to a more user readable format. Here is the documentation of the
+/// original function:
+///
+/// """
 /// We have to transform some of the types.
 ///
 /// This is highly inefficient and is currently based on trial and error with the core packages.
@@ -272,6 +323,7 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
 /// It tries to flatten types, removing `&` and `&mut`, and paths, while keeping generics.
 ///
 /// Associated generic types are also rewritten into regular generic type parameters.
+/// """
 fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, str> {
     // let ty = engine.format_type_name(ty).replace("crate::", "");
     let ty = ty.strip_prefix("&mut").unwrap_or(ty).trim();
