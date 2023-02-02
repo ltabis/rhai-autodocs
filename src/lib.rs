@@ -354,12 +354,34 @@ fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, s
 fn remove_result(ty: &str) -> &str {
     if let Some(ty) = ty.strip_prefix("Result<") {
         ty.strip_suffix(", Box<EvalAltResult>>")
+            .or_else(|| ty.strip_suffix(", Box<rhai::EvalAltResult>>"))
     } else if let Some(ty) = ty.strip_prefix("EngineResult<") {
         ty.strip_suffix('>')
-    } else if let Some(ty) = ty.strip_prefix("RhaiResultOf<") {
+    } else if let Some(ty) = ty
+        .strip_prefix("RhaiResultOf<")
+        .or_else(|| ty.strip_suffix("rhai::RhaiResultOf<"))
+    {
         ty.strip_suffix('>')
     } else {
         None
     }
     .map_or(ty, str::trim)
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    #[test]
+    fn test_remove_result() {
+        assert_eq!("Cache", remove_result("Result<Cache, Box<EvalAltResult>>"));
+        assert_eq!(
+            "&mut Cache",
+            remove_result("Result<&mut Cache, Box<EvalAltResult>>")
+        );
+        assert_eq!(
+            "Cache",
+            remove_result("Result<Cache, Box<rhai::EvalAltResult>>")
+        );
+    }
 }
