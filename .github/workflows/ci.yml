@@ -13,6 +13,7 @@ env:
 
 jobs:
   test:
+    runs-on: ubuntu-latest
     name: test-stable
     steps:
       - uses: actions/checkout@v3
@@ -22,7 +23,6 @@ jobs:
       - run: cargo test
 
   clippy:
-    name: Clippy
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
