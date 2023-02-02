@@ -107,7 +107,7 @@ pub fn generate_documentation(
     let metadata =
         serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(|error| error.to_string())?;
 
-    generate_module_documentation(&engine, "global", metadata)
+    generate_module_documentation(engine, "global", metadata)
 }
 
 fn generate_module_documentation(
