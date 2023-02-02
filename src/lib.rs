@@ -325,9 +325,9 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
 /// Associated generic types are also rewritten into regular generic type parameters.
 /// """
 fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, str> {
-    // let ty = engine.format_type_name(ty).replace("crate::", "");
     let ty = ty.strip_prefix("&mut").unwrap_or(ty).trim();
     let ty = remove_result(ty);
+    // Removes namespaces for the type.
     let ty = ty.split("::").last().unwrap();
 
     let ty = ty
@@ -353,13 +353,15 @@ fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, s
 /// NOTE: should we replace the wrapper by a '!' character or a tag on the function definition ?
 fn remove_result(ty: &str) -> &str {
     if let Some(ty) = ty.strip_prefix("Result<") {
-        ty.strip_suffix(", Box<EvalAltResult>>")
+        ty.strip_suffix(",Box<EvalAltResult>>")
+            .or_else(|| ty.strip_suffix(",Box<rhai::EvalAltResult>>"))
+            .or_else(|| ty.strip_suffix(", Box<EvalAltResult>>"))
             .or_else(|| ty.strip_suffix(", Box<rhai::EvalAltResult>>"))
     } else if let Some(ty) = ty.strip_prefix("EngineResult<") {
         ty.strip_suffix('>')
     } else if let Some(ty) = ty
         .strip_prefix("RhaiResultOf<")
-        .or_else(|| ty.strip_suffix("rhai::RhaiResultOf<"))
+        .or_else(|| ty.strip_prefix("rhai::RhaiResultOf<"))
     {
         ty.strip_suffix('>')
     } else {
@@ -375,6 +377,7 @@ pub mod test {
     #[test]
     fn test_remove_result() {
         assert_eq!("Cache", remove_result("Result<Cache, Box<EvalAltResult>>"));
+        assert_eq!("Cache", remove_result("Result<Cache,Box<EvalAltResult>>"));
         assert_eq!(
             "&mut Cache",
             remove_result("Result<&mut Cache, Box<EvalAltResult>>")
@@ -383,5 +386,12 @@ pub mod test {
             "Cache",
             remove_result("Result<Cache, Box<rhai::EvalAltResult>>")
         );
+        assert_eq!(
+            "Cache",
+            remove_result("Result<Cache,Box<rhai::EvalAltResult>>")
+        );
+        assert_eq!("Stuff", remove_result("EngineResult<Stuff>"));
+        assert_eq!("Stuff", remove_result("RhaiResultOf<Stuff>"));
+        assert_eq!("Stuff", remove_result("rhai::RhaiResultOf<Stuff>"));
     }
 }
