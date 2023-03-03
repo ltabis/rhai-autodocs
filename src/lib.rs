@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+use core::panic;
+
 use serde::{Deserialize, Serialize};
 
 /// Rhai module documentation in markdown format.
@@ -87,6 +89,87 @@ fn remove_test_code(doc_comments: &str) -> String {
     formatted.join("\n")
 }
 
+#[derive(Default)]
+/// Select in which order each functions will be displayed.
+pub enum FunctionOrder {
+    #[default]
+    Alphabetical,
+    FromMetadata,
+}
+
+impl FunctionOrder {
+    fn order_function_groups<'a>(
+        &'_ self,
+        mut function_groups: Vec<(String, Vec<&'a FunctionMetadata>)>,
+    ) -> Vec<(String, Vec<&'a FunctionMetadata>)> {
+        match self {
+            FunctionOrder::Alphabetical => {
+                function_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+                function_groups
+            }
+            FunctionOrder::FromMetadata => {
+                let mut ordered = Vec::with_capacity(function_groups.len());
+
+                for (function, polymorphisms) in function_groups {
+                    for metadata in polymorphisms.iter().filter_map(|item| {
+                        item.doc_comments
+                            .as_ref()
+                            .and_then(|comments| Some(comments))
+                    }) {
+                        if let Some(line) = metadata
+                            .iter()
+                            .find_map(|line| line.strip_prefix("# rhai-autodocs:order:"))
+                        {
+                            let index = line.parse::<usize>().unwrap();
+
+                            ordered[index] = (function, polymorphisms);
+                            break;
+                        } else {
+                            panic!("missing ord metadata in function {function}");
+                        }
+                    }
+                }
+
+                ordered
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+/// Options to configure documentation generation.
+pub struct Options {
+    order: FunctionOrder,
+    include_standard_packages: bool,
+}
+
+impl Options {
+    /// Create new options.
+    pub fn options() -> Options {
+        Options::default()
+    }
+
+    pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
+        self.include_standard_packages = include_standard_packages;
+
+        self
+    }
+
+    /// Generate documentation based on an engine instance.
+    /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
+    ///
+    /// # Result
+    /// * A vector of documented modules.
+    ///
+    /// # Errors
+    /// * Failed to generate function metadata as json.
+    /// * Failed to parse module metadata.
+    pub fn generate(self) -> Result<ModuleDocumentation, String> {
+        todo!()
+    }
+}
+
 /// Generate documentation based on an engine instance.
 /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
 ///
@@ -98,20 +181,21 @@ fn remove_test_code(doc_comments: &str) -> String {
 /// * Failed to parse module metadata.
 pub fn generate_documentation(
     engine: &rhai::Engine,
-    include_standard_packages: bool,
+    options: Options,
 ) -> Result<ModuleDocumentation, String> {
     let json_fns = engine
-        .gen_fn_metadata_to_json(include_standard_packages)
+        .gen_fn_metadata_to_json(options.include_standard_packages)
         .map_err(|error| error.to_string())?;
 
     let metadata =
         serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(|error| error.to_string())?;
 
-    generate_module_documentation(engine, "global", metadata)
+    generate_module_documentation(engine, &options, "global", metadata)
 }
 
 fn generate_module_documentation(
     engine: &rhai::Engine,
+    options: &Options,
     namespace: &str,
     metadata: ModuleMetadata,
 ) -> Result<ModuleDocumentation, String> {
@@ -127,25 +211,25 @@ fn generate_module_documentation(
     };
 
     if let Some(functions) = metadata.functions {
-        let mut fn_groups = std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
+        let mut function_groups =
+            std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
 
         // Rhai function can be polymorphes, so we group them by name.
         functions.iter().for_each(|metadata| {
-            match fn_groups.get_mut(&metadata.name) {
+            match function_groups.get_mut(&metadata.name) {
                 Some(polymorphisms) => polymorphisms.push(metadata),
                 None => {
-                    fn_groups.insert(metadata.name.clone(), vec![metadata]);
+                    function_groups.insert(metadata.name.clone(), vec![metadata]);
                 }
             };
         });
 
-        // Sort functions signatures by alphabetical order.
-        // TODO: Make this an option so user can choose the order of the functions in the documentation.
-        let mut fn_groups = fn_groups
-            .iter()
+        let function_groups = function_groups
+            .into_iter()
             .map(|(name, polymorphisms)| (name, polymorphisms))
             .collect::<Vec<_>>();
-        fn_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        let fn_groups = options.order.order_function_groups(function_groups);
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only
@@ -183,6 +267,7 @@ fn generate_module_documentation(
         for (sub_module, value) in sub_modules {
             md.sub_modules.push(generate_module_documentation(
                 engine,
+                options,
                 &format!("{namespace}::{sub_module}"),
                 serde_json::from_value::<ModuleMetadata>(value)
                     .map_err(|error| error.to_string())?,
