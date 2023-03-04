@@ -56,7 +56,7 @@ impl FunctionMetadata {
     pub fn fmt_doc_comments(&self) -> Option<String> {
         self.doc_comments
             .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(dc.join("\n"))))
+            .map(|dc| remove_test_code(&fmt_doc_comments(doc_comments_to_string(dc))))
     }
 }
 
@@ -67,6 +67,16 @@ fn fmt_doc_comments(dc: String) -> String {
         .replace("/**", "")
         .replace("**/", "")
         .replace("**/", "")
+}
+
+fn doc_comments_to_string(dc: Vec<String>) -> String {
+    dc.into_iter()
+        .filter(|s| {
+            dbg!(s);
+            !s.contains(RHAI_FUNCTION_INDEX_PATTERN)
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// NOTE: mdbook handles this automatically, but other
@@ -97,6 +107,8 @@ pub enum FunctionOrder {
     FromMetadata,
 }
 
+const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
+
 impl FunctionOrder {
     fn order_function_groups<'a>(
         &'_ self,
@@ -109,7 +121,7 @@ impl FunctionOrder {
                 function_groups
             }
             FunctionOrder::FromMetadata => {
-                let mut ordered = Vec::with_capacity(function_groups.len());
+                let mut ordered = function_groups.clone();
 
                 for (function, polymorphisms) in function_groups {
                     for metadata in polymorphisms.iter().filter_map(|item| {
@@ -117,13 +129,13 @@ impl FunctionOrder {
                             .as_ref()
                             .and_then(|comments| Some(comments))
                     }) {
-                        if let Some(line) = metadata
+                        if let Some((_, index)) = metadata
                             .iter()
-                            .find_map(|line| line.strip_prefix("# rhai-autodocs:order:"))
+                            .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
                         {
-                            let index = line.parse::<usize>().unwrap();
+                            let index = index.parse::<usize>().unwrap();
 
-                            ordered[index] = (function, polymorphisms);
+                            ordered[index - 1] = (function, polymorphisms);
                             break;
                         } else {
                             panic!("missing ord metadata in function {function}");
@@ -150,8 +162,18 @@ impl Options {
         Options::default()
     }
 
+    /// Include the standard package functions and modules documentation
+    /// in the generated documentation markdown.
     pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
         self.include_standard_packages = include_standard_packages;
+
+        self
+    }
+
+    /// Order functions in a specific way.
+    /// See [`FunctionOrder`] for more details.
+    pub fn order_with(mut self, order: FunctionOrder) -> Self {
+        self.order = order;
 
         self
     }
@@ -165,8 +187,8 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn generate(self) -> Result<ModuleDocumentation, String> {
-        todo!()
+    pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, String> {
+        generate_documentation(engine, self)
     }
 }
 
@@ -179,7 +201,7 @@ impl Options {
 /// # Errors
 /// * Failed to generate function metadata as json.
 /// * Failed to parse module metadata.
-pub fn generate_documentation(
+fn generate_documentation(
     engine: &rhai::Engine,
     options: Options,
 ) -> Result<ModuleDocumentation, String> {
@@ -211,6 +233,7 @@ fn generate_module_documentation(
     };
 
     if let Some(functions) = metadata.functions {
+        dbg!(&functions);
         let mut function_groups =
             std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
 
