@@ -23,6 +23,7 @@ impl std::fmt::Display for Error {
     }
 }
 
+#[derive(Debug)]
 /// Rhai module documentation in markdown format.
 pub struct ModuleDocumentation {
     /// Name of the module.
@@ -525,5 +526,90 @@ pub mod test {
         assert_eq!("Stuff", remove_result("EngineResult<Stuff>"));
         assert_eq!("Stuff", remove_result("RhaiResultOf<Stuff>"));
         assert_eq!("Stuff", remove_result("rhai::RhaiResultOf<Stuff>"));
+    }
+
+    use rhai::plugin::*;
+
+    /// My own module.
+    #[export_module]
+    mod my_module {
+        /// A function that prints to stdout.
+        ///
+        /// # rhai-autodocs:index:1
+        #[rhai_fn(global)]
+        pub fn hello_world() {
+            println!("Hello, World!");
+        }
+
+        /// A function that adds two integers together.
+        ///
+        /// # rhai-autodocs:index:2
+        #[rhai_fn(global)]
+        pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
+            a + b
+        }
+    }
+
+    #[test]
+    fn test_order_by_index() {
+        let mut engine = rhai::Engine::new();
+
+        engine.register_static_module("my_module", exported_module!(my_module).into());
+
+        // register custom functions and types ...
+        let docs = crate::Options::options()
+            .include_standard_packages(false)
+            .order_with(crate::FunctionOrder::FromMetadata)
+            .generate(&engine)
+            .expect("failed to generate documentation");
+
+        assert_eq!(docs.name, "global");
+        assert_eq!(docs.documentation, "# global\n\n");
+
+        let my_module = &docs.sub_modules[0];
+
+        assert_eq!(my_module.name, "global::my_module");
+        pretty_assertions::assert_eq!(
+            my_module.documentation,
+            r#"# global::my_module
+
+My own module.
+
+
+<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+
+<h2 class="func-name"> <code>fn</code> hello_world </h2>
+
+```rust,ignore
+fn hello_world()
+```
+
+<details>
+<summary markdown="span"> details </summary>
+
+A function that prints to stdout.
+</details>
+
+</div>
+</br>
+
+<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+
+<h2 class="func-name"> <code>fn</code> add </h2>
+
+```rust,ignore
+fn add(a: int, b: int) -> int
+```
+
+<details>
+<summary markdown="span"> details </summary>
+
+A function that adds two integers together.
+</details>
+
+</div>
+</br>
+"#
+        );
     }
 }

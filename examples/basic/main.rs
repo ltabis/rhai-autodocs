@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use rhai::plugin::*;
 
+/// My own module.
 #[export_module]
 mod my_module {
     /// A function that prints to stdout.
