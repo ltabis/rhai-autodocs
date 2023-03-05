@@ -95,7 +95,8 @@ fn remove_extra_tokens(dc: Vec<String>) -> String {
         .map(|s| {
             s.lines()
                 .filter(|l| !l.contains(RHAI_FUNCTION_INDEX_PATTERN))
-                .collect::<String>()
+                .collect::<Vec<_>>()
+                .join("\n")
         })
         .collect::<Vec<_>>()
         .join("\n")
