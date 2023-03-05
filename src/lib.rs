@@ -1,8 +1,27 @@
 #![doc = include_str!("../README.md")]
 
-use core::panic;
-
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug)]
+pub enum Error {
+    PreProcessing(String),
+    Metadata(String),
+}
+
+impl std::error::Error for Error {}
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ERROR: {}",
+            match self {
+                Error::PreProcessing(err) => format!("pre-processing error: {err}"),
+                Error::Metadata(err) =>
+                    format!("failed to parse function or module metadata: {err}"),
+            }
+        )
+    }
+}
 
 /// Rhai module documentation in markdown format.
 pub struct ModuleDocumentation {
@@ -115,12 +134,12 @@ impl FunctionOrder {
     fn order_function_groups<'a>(
         &'_ self,
         mut function_groups: Vec<(String, Vec<&'a FunctionMetadata>)>,
-    ) -> Vec<(String, Vec<&'a FunctionMetadata>)> {
+    ) -> Result<Vec<(String, Vec<&'a FunctionMetadata>)>, Error> {
         match self {
             FunctionOrder::Alphabetical => {
                 function_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
 
-                function_groups
+                Ok(function_groups)
             }
             FunctionOrder::FromMetadata => {
                 let mut ordered = function_groups.clone();
@@ -135,17 +154,21 @@ impl FunctionOrder {
                             .iter()
                             .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
                         {
-                            let index = index.parse::<usize>().unwrap();
+                            let index = index
+                                .parse::<usize>()
+                                .map_err(|err| Error::PreProcessing(err.to_string()))?;
 
                             ordered[index - 1] = (function, polymorphisms);
                             break;
                         } else {
-                            panic!("missing ord metadata in function {function}");
+                            return Err(Error::PreProcessing(format!(
+                                "missing ord metadata in function {function}"
+                            )));
                         }
                     }
                 }
 
-                ordered
+                Ok(ordered)
             }
         }
     }
@@ -189,7 +212,7 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, String> {
+    pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, Error> {
         generate_documentation(engine, self)
     }
 }
@@ -206,13 +229,13 @@ impl Options {
 fn generate_documentation(
     engine: &rhai::Engine,
     options: Options,
-) -> Result<ModuleDocumentation, String> {
+) -> Result<ModuleDocumentation, Error> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| Error::Metadata(error.to_string()))?;
 
-    let metadata =
-        serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(|error| error.to_string())?;
+    let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
+        .map_err(|error| Error::Metadata(error.to_string()))?;
 
     generate_module_documentation(engine, &options, "global", metadata)
 }
@@ -222,7 +245,7 @@ fn generate_module_documentation(
     options: &Options,
     namespace: &str,
     metadata: ModuleMetadata,
-) -> Result<ModuleDocumentation, String> {
+) -> Result<ModuleDocumentation, Error> {
     let mut md = ModuleDocumentation {
         name: namespace.to_owned(),
         sub_modules: vec![],
@@ -253,7 +276,7 @@ fn generate_module_documentation(
             .map(|(name, polymorphisms)| (name, polymorphisms))
             .collect::<Vec<_>>();
 
-        let fn_groups = options.order.order_function_groups(function_groups);
+        let fn_groups = options.order.order_function_groups(function_groups)?;
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only
@@ -294,7 +317,7 @@ fn generate_module_documentation(
                 options,
                 &format!("{namespace}::{sub_module}"),
                 serde_json::from_value::<ModuleMetadata>(value)
-                    .map_err(|error| error.to_string())?,
+                    .map_err(|error| Error::Metadata(error.to_string()))?,
             )?);
         }
     }
