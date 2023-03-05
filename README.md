@@ -15,7 +15,10 @@ fn main() {
 
         // register custom functions and types ...
 
-        let docs = rhai_autodocs::generate_documentation(&engine, false)
+        let docs = rhai_autodocs::Options::options()
+            .include_standard_packages(false)
+            .order_with(rhai_autodocs::FunctionOrder::ByIndex)
+            .generate(&engine)
             .expect("failed to generate documentation");
 
         // Write the documentation in a file, or output to stdout, etc.
