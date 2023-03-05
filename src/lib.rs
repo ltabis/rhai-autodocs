@@ -56,7 +56,7 @@ impl FunctionMetadata {
     pub fn fmt_doc_comments(&self) -> Option<String> {
         self.doc_comments
             .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(doc_comments_to_string(dc))))
+            .map(|dc| remove_test_code(&fmt_doc_comments(remove_extra_tokens(dc))))
     }
 }
 
@@ -69,11 +69,13 @@ fn fmt_doc_comments(dc: String) -> String {
         .replace("**/", "")
 }
 
-fn doc_comments_to_string(dc: Vec<String>) -> String {
+/// Remove crate specific comments, like `rhai-autodocs:index`.
+fn remove_extra_tokens(dc: Vec<String>) -> String {
     dc.into_iter()
-        .filter(|s| {
-            dbg!(s);
-            !s.contains(RHAI_FUNCTION_INDEX_PATTERN)
+        .map(|s| {
+            s.lines()
+                .filter(|l| !l.contains(RHAI_FUNCTION_INDEX_PATTERN))
+                .collect::<String>()
         })
         .collect::<Vec<_>>()
         .join("\n")
@@ -233,7 +235,6 @@ fn generate_module_documentation(
     };
 
     if let Some(functions) = metadata.functions {
-        dbg!(&functions);
         let mut function_groups =
             std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
 
