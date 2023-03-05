@@ -164,12 +164,11 @@ impl FunctionOrder {
             FunctionOrder::ByIndex => {
                 let mut ordered = function_groups.clone();
 
-                for (function, polymorphisms) in function_groups {
-                    for metadata in polymorphisms.iter().filter_map(|item| {
-                        item.doc_comments
-                            .as_ref()
-                            .and_then(|comments| Some(comments))
-                    }) {
+                'groups: for (function, polymorphisms) in function_groups {
+                    for metadata in polymorphisms
+                        .iter()
+                        .filter_map(|item| item.doc_comments.as_ref())
+                    {
                         if let Some((_, index)) = metadata
                             .iter()
                             .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
@@ -179,13 +178,13 @@ impl FunctionOrder {
                                 .map_err(|err| Error::PreProcessing(err.to_string()))?;
 
                             ordered[index - 1] = (function, polymorphisms);
-                            break;
-                        } else {
-                            return Err(Error::PreProcessing(format!(
-                                "missing ord metadata in function {function}"
-                            )));
+                            continue 'groups;
                         }
                     }
+
+                    return Err(Error::PreProcessing(format!(
+                        "missing ord metadata in function {function}"
+                    )));
                 }
 
                 Ok(ordered)

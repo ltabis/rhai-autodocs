@@ -7,8 +7,24 @@ use rhai::plugin::*;
 mod my_module {
     /// A function that prints to stdout.
     ///
+    /// # Args
+    ///
+    /// * message - append a message to the greeting. (optional)
+    ///
     /// # rhai-autodocs:index:1
-    #[rhai_fn(global)]
+    #[rhai_fn(global, name = "hello_world")]
+    pub fn hello_world_message(message: &str) {
+        println!("Hello, World! {message}");
+    }
+
+    /// A function that prints to stdout.
+    ///
+    /// # Args
+    ///
+    /// * message - append a message to the greeting. (optional)
+    ///
+    /// # rhai-autodocs:index:1
+    #[rhai_fn(global, name = "hello_world")]
     pub fn hello_world() {
         println!("Hello, World!");
     }
