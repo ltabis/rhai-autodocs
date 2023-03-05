@@ -126,7 +126,7 @@ fn remove_test_code(doc_comments: &str) -> String {
 pub enum FunctionOrder {
     #[default]
     Alphabetical,
-    FromMetadata,
+    ByIndex,
 }
 
 const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
@@ -142,7 +142,7 @@ impl FunctionOrder {
 
                 Ok(function_groups)
             }
-            FunctionOrder::FromMetadata => {
+            FunctionOrder::ByIndex => {
                 let mut ordered = function_groups.clone();
 
                 for (function, polymorphisms) in function_groups {
@@ -559,7 +559,7 @@ pub mod test {
         // register custom functions and types ...
         let docs = crate::Options::options()
             .include_standard_packages(false)
-            .order_with(crate::FunctionOrder::FromMetadata)
+            .order_with(crate::FunctionOrder::ByIndex)
             .generate(&engine)
             .expect("failed to generate documentation");
 
