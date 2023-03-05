@@ -124,8 +124,27 @@ fn remove_test_code(doc_comments: &str) -> String {
 #[derive(Default)]
 /// Select in which order each functions will be displayed.
 pub enum FunctionOrder {
+    /// Display functions by alphabetical order.
     #[default]
     Alphabetical,
+    /// Display functions by index using a pre-processing comment with the `# rhai-autodocs:index:<number>` syntax.
+    /// The `# rhai-autodocs:index:<number>` line will be removed in the final generated markdown.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// /// Function that will appear first in docs.
+    /// ///
+    /// /// # rhai-autodocs:index:1
+    /// #[rhai_fn(global)]
+    /// pub fn my_function1() {}
+    ///
+    /// /// Function that will appear second in docs.
+    /// ///
+    /// /// # rhai-autodocs:index:2
+    /// #[rhai_fn(global)]
+    /// pub fn my_function2() {}
+    /// ```
     ByIndex,
 }
 
@@ -182,12 +201,12 @@ pub struct Options {
     include_standard_packages: bool,
 }
 
-impl Options {
-    /// Create new options.
-    pub fn options() -> Options {
-        Options::default()
-    }
+/// Create new options used to configure docs generation.
+pub fn options() -> Options {
+    Options::default()
+}
 
+impl Options {
     /// Include the standard package functions and modules documentation
     /// in the generated documentation markdown.
     pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
@@ -557,7 +576,7 @@ pub mod test {
         engine.register_static_module("my_module", exported_module!(my_module).into());
 
         // register custom functions and types ...
-        let docs = crate::Options::options()
+        let docs = crate::options()
             .include_standard_packages(false)
             .order_with(crate::FunctionOrder::ByIndex)
             .generate(&engine)
