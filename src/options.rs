@@ -28,7 +28,15 @@ impl Options {
 
     /// Order functions in a specific way.
     /// See [`FunctionOrder`] for more details.
-    pub fn order_with(mut self, order: FunctionOrder) -> Self {
+    pub fn order_functions_with(mut self, order: FunctionOrder) -> Self {
+        self.order = order;
+
+        self
+    }
+
+    /// Order functions in a specific way.
+    /// See [`FunctionOrder`] for more details.
+    pub fn format_sections_with(mut self, order: FunctionOrder) -> Self {
         self.order = order;
 
         self

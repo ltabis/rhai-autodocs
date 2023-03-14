@@ -48,7 +48,7 @@ fn main() {
     // register custom functions and types ...
     let docs = rhai_autodocs::options()
         .include_standard_packages(false)
-        .order_with(rhai_autodocs::options::FunctionOrder::ByIndex)
+        .order_functions_with(rhai_autodocs::options::FunctionOrder::ByIndex)
         .generate(&engine)
         .expect("failed to generate documentation");
 

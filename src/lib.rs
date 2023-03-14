@@ -383,7 +383,7 @@ pub mod test {
         // register custom functions and types ...
         let docs = options::options()
             .include_standard_packages(false)
-            .order_with(FunctionOrder::ByIndex)
+            .order_functions_with(FunctionOrder::ByIndex)
             .generate(&engine)
             .expect("failed to generate documentation");
 
