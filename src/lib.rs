@@ -1,106 +1,17 @@
 #![doc = include_str!("../README.md")]
 
-use serde::{Deserialize, Serialize};
+pub mod error;
+pub mod function;
+pub mod module;
+pub mod options;
 
-#[derive(Debug)]
-pub enum Error {
-    PreProcessing(String),
-    Metadata(String),
-}
+use function::FunctionMetadata;
+pub use module::ModuleDocumentation;
+use module::ModuleMetadata;
+use options::Options;
+pub use options::{options, FunctionOrder, SectionFormat};
 
-impl std::error::Error for Error {}
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "ERROR: {}",
-            match self {
-                Error::PreProcessing(err) => format!("pre-processing error: {err}"),
-                Error::Metadata(err) =>
-                    format!("failed to parse function or module metadata: {err}"),
-            }
-        )
-    }
-}
-
-#[derive(Debug)]
-/// Rhai module documentation in markdown format.
-pub struct ModuleDocumentation {
-    /// Name of the module.
-    pub name: String,
-    /// Sub modules.
-    pub sub_modules: Vec<ModuleDocumentation>,
-    /// Raw text documentation in markdown.
-    pub documentation: String,
-}
-
-/// Intermediatory representation of the documentation.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ModuleMetadata {
-    /// Optional documentation for the module.
-    doc: Option<String>,
-    /// Functions metadata, if any.
-    functions: Option<Vec<FunctionMetadata>>,
-    /// Sub-modules, if any, stored as raw json values.
-    modules: Option<serde_json::Map<String, serde_json::Value>>,
-}
-
-impl ModuleMetadata {
-    /// Format the module doc comments to make them
-    /// readable markdown.
-    pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc
-            .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(dc)))
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct FunctionMetadata {
-    pub access: String,
-    pub base_hash: u128,
-    pub full_hash: u128,
-    pub name: String,
-    pub namespace: String,
-    pub num_params: usize,
-    pub params: Option<Vec<std::collections::HashMap<String, String>>>,
-    pub signature: String,
-    pub return_type: Option<String>,
-    pub doc_comments: Option<Vec<String>>,
-}
-
-impl FunctionMetadata {
-    /// Format the function doc comments to make them
-    /// readable markdown.
-    pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc_comments
-            .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(remove_extra_tokens(dc))))
-    }
-}
-
-/// Remove doc comments identifiers.
-fn fmt_doc_comments(dc: String) -> String {
-    dc.replace("/// ", "")
-        .replace("///", "")
-        .replace("/**", "")
-        .replace("**/", "")
-        .replace("**/", "")
-}
-
-/// Remove crate specific comments, like `rhai-autodocs:index`.
-fn remove_extra_tokens(dc: Vec<String>) -> String {
-    dc.into_iter()
-        .map(|s| {
-            s.lines()
-                .filter(|l| !l.contains(RHAI_FUNCTION_INDEX_PATTERN))
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
+use error::AutodocsError;
 
 /// NOTE: mdbook handles this automatically, but other
 ///       markdown processors might not.
@@ -122,119 +33,13 @@ fn remove_test_code(doc_comments: &str) -> String {
     formatted.join("\n")
 }
 
-#[derive(Default)]
-/// Select in which order each functions will be displayed.
-pub enum FunctionOrder {
-    /// Display functions by alphabetical order.
-    #[default]
-    Alphabetical,
-    /// Display functions by index using a pre-processing comment with the `# rhai-autodocs:index:<number>` syntax.
-    /// The `# rhai-autodocs:index:<number>` line will be removed in the final generated markdown.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// /// Function that will appear first in docs.
-    /// ///
-    /// /// # rhai-autodocs:index:1
-    /// #[rhai_fn(global)]
-    /// pub fn my_function1() {}
-    ///
-    /// /// Function that will appear second in docs.
-    /// ///
-    /// /// # rhai-autodocs:index:2
-    /// #[rhai_fn(global)]
-    /// pub fn my_function2() {}
-    /// ```
-    ByIndex,
-}
-
-const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
-
-impl FunctionOrder {
-    fn order_function_groups<'a>(
-        &'_ self,
-        mut function_groups: Vec<(String, Vec<&'a FunctionMetadata>)>,
-    ) -> Result<Vec<(String, Vec<&'a FunctionMetadata>)>, Error> {
-        match self {
-            FunctionOrder::Alphabetical => {
-                function_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-                Ok(function_groups)
-            }
-            FunctionOrder::ByIndex => {
-                let mut ordered = function_groups.clone();
-
-                'groups: for (function, polymorphisms) in function_groups {
-                    for metadata in polymorphisms
-                        .iter()
-                        .filter_map(|item| item.doc_comments.as_ref())
-                    {
-                        if let Some((_, index)) = metadata
-                            .iter()
-                            .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
-                        {
-                            let index = index
-                                .parse::<usize>()
-                                .map_err(|err| Error::PreProcessing(err.to_string()))?;
-
-                            ordered[index - 1] = (function, polymorphisms);
-                            continue 'groups;
-                        }
-                    }
-
-                    return Err(Error::PreProcessing(format!(
-                        "missing ord metadata in function {function}"
-                    )));
-                }
-
-                Ok(ordered)
-            }
-        }
-    }
-}
-
-#[derive(Default)]
-/// Options to configure documentation generation.
-pub struct Options {
-    order: FunctionOrder,
-    include_standard_packages: bool,
-}
-
-/// Create new options used to configure docs generation.
-pub fn options() -> Options {
-    Options::default()
-}
-
-impl Options {
-    /// Include the standard package functions and modules documentation
-    /// in the generated documentation markdown.
-    pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
-        self.include_standard_packages = include_standard_packages;
-
-        self
-    }
-
-    /// Order functions in a specific way.
-    /// See [`FunctionOrder`] for more details.
-    pub fn order_with(mut self, order: FunctionOrder) -> Self {
-        self.order = order;
-
-        self
-    }
-
-    /// Generate documentation based on an engine instance.
-    /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
-    ///
-    /// # Result
-    /// * A vector of documented modules.
-    ///
-    /// # Errors
-    /// * Failed to generate function metadata as json.
-    /// * Failed to parse module metadata.
-    pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, Error> {
-        generate_documentation(engine, self)
-    }
+/// Remove doc comments identifiers.
+fn fmt_doc_comments(dc: String) -> String {
+    dc.replace("/// ", "")
+        .replace("///", "")
+        .replace("/**", "")
+        .replace("**/", "")
+        .replace("**/", "")
 }
 
 /// Generate documentation based on an engine instance.
@@ -249,13 +54,13 @@ impl Options {
 fn generate_documentation(
     engine: &rhai::Engine,
     options: Options,
-) -> Result<ModuleDocumentation, Error> {
+) -> Result<ModuleDocumentation, AutodocsError> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
-        .map_err(|error| Error::Metadata(error.to_string()))?;
+        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
-        .map_err(|error| Error::Metadata(error.to_string()))?;
+        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
     generate_module_documentation(engine, &options, "global", metadata)
 }
@@ -265,7 +70,7 @@ fn generate_module_documentation(
     options: &Options,
     namespace: &str,
     metadata: ModuleMetadata,
-) -> Result<ModuleDocumentation, Error> {
+) -> Result<ModuleDocumentation, AutodocsError> {
     let mut md = ModuleDocumentation {
         name: namespace.to_owned(),
         sub_modules: vec![],
@@ -337,7 +142,7 @@ fn generate_module_documentation(
                 options,
                 &format!("{namespace}::{sub_module}"),
                 serde_json::from_value::<ModuleMetadata>(value)
-                    .map_err(|error| Error::Metadata(error.to_string()))?,
+                    .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
             )?);
         }
     }
@@ -576,9 +381,9 @@ pub mod test {
         engine.register_static_module("my_module", exported_module!(my_module).into());
 
         // register custom functions and types ...
-        let docs = crate::options()
+        let docs = options::options()
             .include_standard_packages(false)
-            .order_with(crate::FunctionOrder::ByIndex)
+            .order_with(FunctionOrder::ByIndex)
             .generate(&engine)
             .expect("failed to generate documentation");
 
