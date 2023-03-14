@@ -101,7 +101,9 @@ fn generate_module_documentation(
             .map(|(name, polymorphisms)| (name, polymorphisms))
             .collect::<Vec<_>>();
 
-        let fn_groups = options.order.order_function_groups(function_groups)?;
+        let fn_groups = options
+            .functions_order
+            .order_function_groups(function_groups)?;
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only

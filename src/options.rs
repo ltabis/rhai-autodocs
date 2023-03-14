@@ -8,7 +8,8 @@ pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 #[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
-    pub(crate) order: FunctionOrder,
+    pub(crate) functions_order: FunctionOrder,
+    pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
 }
 
@@ -28,16 +29,17 @@ impl Options {
 
     /// Order functions in a specific way.
     /// See [`FunctionOrder`] for more details.
-    pub fn order_functions_with(mut self, order: FunctionOrder) -> Self {
-        self.order = order;
+    pub fn order_functions_with(mut self, functions_order: FunctionOrder) -> Self {
+        self.functions_order = functions_order;
 
         self
     }
 
-    /// Order functions in a specific way.
-    /// See [`FunctionOrder`] for more details.
-    pub fn format_sections_with(mut self, order: FunctionOrder) -> Self {
-        self.order = order;
+    /// Format doc comments 'sections', markdown that starts with the `#` character,
+    /// with special formats.
+    /// See [`SectionFormat`] for more details.
+    pub fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
+        self.sections_format = sections_format;
 
         self
     }
