@@ -5,12 +5,25 @@ use crate::{
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
-#[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
     pub(crate) functions_order: FunctionOrder,
     pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
+    pub(crate) include_default_css: bool,
+    pub(crate) custom_css_files: Vec<std::path::PathBuf>,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            functions_order: Default::default(),
+            sections_format: Default::default(),
+            include_standard_packages: false,
+            include_default_css: true,
+            custom_css_files: Default::default(),
+        }
+    }
 }
 
 /// Create new options used to configure docs generation.
@@ -23,6 +36,14 @@ impl Options {
     /// in the generated documentation markdown.
     pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
         self.include_standard_packages = include_standard_packages;
+
+        self
+    }
+
+    /// Include CSS used to render custom html elements generated
+    /// by the crate.
+    pub fn include_default_css(mut self, include_default_css: bool) -> Self {
+        self.include_default_css = include_default_css;
 
         self
     }
@@ -40,6 +61,13 @@ impl Options {
     /// See [`SectionFormat`] for more details.
     pub fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
         self.sections_format = sections_format;
+
+        self
+    }
+
+    /// Add custom css to render pages.
+    pub fn with_css_file(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.custom_css_files.push(path.into());
 
         self
     }
