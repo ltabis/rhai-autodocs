@@ -2,6 +2,14 @@
 
 Generate Markdown documentation from a `rhai::Engine` instance.
 
+## Features
+
+- Output Rhai documentation as Markdown w/ HTML.
+- Function ordering.
+- Rust docs 'sections' format with default Markdown format or displayed using tabs.
+
+## How to use
+
 This library can be imported as a build dependency into your build script. A typical
 documentation generation workflow would look like this:
 
@@ -24,3 +32,6 @@ fn main() {
     }
 }
 ```
+
+You need to import the `styles/default.css` file and `src/tabs.js` script for everything to work correctly. (You can of course override the styles and javascript code if you wish)
+The generated markdown / HTML works best with [mdbook](https://rust-lang.github.io/mdBook/index.html). See the mdbook example for more details.
