@@ -166,5 +166,57 @@ pub enum SectionFormat {
     Rust,
     /// Display sections using tabs that wraps all underlying
     /// documentation in them.
+    ///
+    /// NOTE: [`SectionFormat::fmt_sections`] is called after [`remove_test_code`],
+    /// so checking for code blocks and `#` line start is not required because it
+    /// was supposed to be removed.
     Tabs,
+}
+
+impl SectionFormat {
+    pub(crate) fn fmt_sections(&self, function_name: &str, dc: String) -> String {
+        match self {
+            crate::SectionFormat::Rust => format!(
+                r#"<details>
+<summary markdown="span"> details </summary>
+
+{dc}
+</details>"#
+            ),
+            crate::SectionFormat::Tabs => {
+                let mut sections = vec![];
+                let tab_content = dc.lines().fold(
+                    format!(r#"<div id="{function_name}-description" class="tabcontent">"#),
+                    |mut state, line| {
+                        if let Some((_, section)) = line.split_once("# ") {
+                            sections.push(section);
+                            state.push_str("</div>");
+                            state.push_str(&format!(
+                                r#"<div id="{function_name}-{section}" class="tabcontent">"#
+                            ));
+                        } else {
+                            state.push_str(line);
+                        }
+
+                        state
+                    },
+                );
+
+                sections.into_iter().fold(
+                    format!(
+                        r#"<div class="tab">
+<button class="tablinks" onclick="openTab(event, '{function_name}-description')">description</button>
+                    "#),
+                    |mut state, section| {
+                        state += &format!(
+                            r#"
+<button class="tablinks" onclick="openTab(event, '{function_name}-{section}')">{section}</button>
+                        "#
+                        );
+
+                        state
+                }) + tab_content.as_str()
+            }
+        }
+    }
 }

@@ -130,6 +130,7 @@ fn generate_module_documentation(
                 engine,
                 &name.replace("get$", "").replace("set$", ""),
                 &polymorphisms[..],
+                &options.sections_format,
             ) {
                 md.documentation += &fn_doc;
             }
@@ -158,6 +159,7 @@ fn generate_function_documentation(
     engine: &rhai::Engine,
     name: &str,
     polymorphisms: &[&FunctionMetadata],
+    section_format: &SectionFormat,
 ) -> Option<String> {
     let metadata = polymorphisms.first().expect("will never be empty");
     let root_definition = generate_function_definition(engine, metadata);
@@ -194,7 +196,7 @@ fn generate_function_documentation(
                 .collect::<Vec<_>>()
                 .join("\n"),
             &metadata
-                .fmt_doc_comments()
+                .fmt_doc_comments(section_format)
                 .map(|doc| format!(
                     r#"
 <details>

@@ -18,7 +18,7 @@ pub(crate) struct FunctionMetadata {
 }
 
 /// Remove crate specific comments, like `rhai-autodocs:index`.
-fn remove_extra_tokens(dc: Vec<String>) -> String {
+fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
     dc.into_iter()
         .map(|s| {
             s.lines()
@@ -27,15 +27,18 @@ fn remove_extra_tokens(dc: Vec<String>) -> String {
                 .join("\n")
         })
         .collect::<Vec<_>>()
-        .join("\n")
 }
 
 impl FunctionMetadata {
     /// Format the function doc comments to make them
     /// readable markdown.
-    pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc_comments
-            .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(remove_extra_tokens(dc))))
+    pub fn fmt_doc_comments(&self, section_format: &crate::SectionFormat) -> Option<String> {
+        self.doc_comments.clone().map(|dc| {
+            let removed_extra_tokens = remove_extra_tokens(dc).join("\n");
+            let remove_comments = fmt_doc_comments(removed_extra_tokens);
+            let remove_test_code = remove_test_code(&remove_comments);
+
+            section_format.fmt_sections(&self.name, remove_test_code)
+        })
     }
 }
