@@ -149,16 +149,18 @@ impl SectionFormat {
     pub(crate) fn fmt_sections(&self, function_name: &str, dc: String) -> String {
         match self {
             crate::SectionFormat::Rust => format!(
-                r#"<details>
+                r#"
+<details>
 <summary markdown="span"> details </summary>
 
 {dc}
-</details>"#
+</details>
+"#
             ),
             crate::SectionFormat::Tabs => {
                 let mut sections = vec![];
-                let tab_content = dc.lines().fold(
-                    format!(r#"<div id="{function_name}-description" class="tabcontent">"#),
+                let mut tab_content = dc.lines().fold(
+                    format!(r#"<div id="{function_name}-description" style="display: block;" class="tabcontent active">"#),
                     |mut state, line| {
                         if let Some((_, section)) = line.split_once("# ") {
                             sections.push(section);
@@ -174,6 +176,8 @@ impl SectionFormat {
                     },
                 );
 
+                tab_content += "</div>";
+
                 sections.into_iter().fold(
                     format!(
                         r#"<div class="tab">
@@ -187,7 +191,7 @@ impl SectionFormat {
                         );
 
                         state
-                }) + tab_content.as_str()
+                }) + r#"</div>"# + tab_content.as_str()
             }
         }
     }
