@@ -29,6 +29,15 @@ mod my_module {
 
     /// A function that adds two integers together.
     ///
+    /// # Args
+    ///
+    /// * a - the first integer.
+    /// * b - the second integer.
+    ///
+    /// # Return
+    ///
+    /// * An integer, the result of the addition of `a` and `b`.
+    ///
     /// # rhai-autodocs:index:2
     #[rhai_fn(global)]
     pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {

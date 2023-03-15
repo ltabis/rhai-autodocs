@@ -11,11 +11,21 @@ My own module.
 fn hello_world()
 fn hello_world(message: String)
 ```
+
 <div class="tab">
-<button class="tablinks" onclick="openTab(event, 'hello_world-description')">description</button>
-                    
-<button class="tablinks" onclick="openTab(event, 'hello_world-Args')">Args</button>
-                        <div id="hello_world-description" class="tabcontent">A function that prints to stdout.</div><div id="hello_world-Args" class="tabcontent">* message - append a message to the greeting. (optional)
+    <button id="link-hello_world-description" class="tablinks" onclick="openTab(event, 'hello_world-description')">Description</button>
+    <button id="link-hello_world-Args" class="tablinks" onclick="openTab(event, 'hello_world-Args')">Args</button></div>
+
+<div id="hello_world-description" markdown="span" class="tabcontent active">
+A function that prints to stdout.
+
+
+</div>
+<div id="hello_world-Args" class="tabcontent">
+
+* message - append a message to the greeting. (optional)
+</div>
+
 </div>
 </br>
 
@@ -26,8 +36,28 @@ fn hello_world(message: String)
 ```rust,ignore
 fn add(a: int, b: int) -> int
 ```
+
 <div class="tab">
-<button class="tablinks" onclick="openTab(event, 'add-description')">description</button>
-                    <div id="add-description" class="tabcontent">A function that adds two integers together.
+    <button id="link-add-description" class="tablinks" onclick="openTab(event, 'add-description')">Description</button>
+    <button id="link-add-Args" class="tablinks" onclick="openTab(event, 'add-Args')">Args</button>
+    <button id="link-add-Return" class="tablinks" onclick="openTab(event, 'add-Return')">Return</button></div>
+
+<div id="add-description" markdown="span" class="tabcontent active">
+A function that adds two integers together.
+
+
+</div>
+<div id="add-Args" class="tabcontent">
+
+* a - the first integer.
+* b - the second integer.
+
+
+</div>
+<div id="add-Return" class="tabcontent">
+
+* An integer, the result of the addition of `a` and `b`.
+</div>
+
 </div>
 </br>
