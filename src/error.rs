@@ -11,9 +11,9 @@ impl std::fmt::Display for AutodocsError {
             f,
             "ERROR: {}",
             match self {
-                AutodocsError::PreProcessing(err) => format!("pre-processing error: {err}"),
-                AutodocsError::Metadata(err) =>
-                    format!("failed to parse function or module metadata: {err}"),
+                AutodocsError::PreProcessing(error) => format!("pre-processing error: {error}"),
+                AutodocsError::Metadata(error) =>
+                    format!("failed to parse function or module metadata: {error}"),
             }
         )
     }
