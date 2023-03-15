@@ -44,7 +44,6 @@ pre {
 
 .tab button.active {
   background-color: var(--theme-bg);
-
 }
 
 .tabcontent {
