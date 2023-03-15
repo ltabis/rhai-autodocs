@@ -160,38 +160,43 @@ impl SectionFormat {
             crate::SectionFormat::Tabs => {
                 let mut sections = vec![];
                 let mut tab_content = dc.lines().fold(
-                    format!(r#"<div id="{function_name}-description" style="display: block;" class="tabcontent active">"#),
+                    format!(
+                        r#"
+<div id="{function_name}-description" markdown="span" class="tabcontent active">
+"#
+                    ),
                     |mut state, line| {
                         if let Some((_, section)) = line.split_once("# ") {
                             sections.push(section);
-                            state.push_str("</div>");
+                            state.push_str("\n</div>\n");
                             state.push_str(&format!(
-                                r#"<div id="{function_name}-{section}" class="tabcontent">"#
+                                r#"<div id="{function_name}-{section}" class="tabcontent">
+"#
                             ));
                         } else {
                             state.push_str(line);
+                            state.push('\n');
                         }
 
                         state
                     },
                 );
 
-                tab_content += "</div>";
+                tab_content += "</div>\n";
 
                 sections.into_iter().fold(
                     format!(
-                        r#"<div class="tab">
-<button class="tablinks" onclick="openTab(event, '{function_name}-description')">description</button>
-                    "#),
-                    |mut state, section| {
-                        state += &format!(
+                        r#"
+<div class="tab">
+    <button class="tablinks" onclick="openTab(event, '{function_name}-description')">Description</button>"#),
+                    |state, section| {
+                        state + format!(
                             r#"
-<button class="tablinks" onclick="openTab(event, '{function_name}-{section}')">{section}</button>
-                        "#
-                        );
-
-                        state
-                }) + r#"</div>"# + tab_content.as_str()
+    <button class="tablinks" onclick="openTab(event, '{function_name}-{section}')">{section}</button>"#
+                        ).as_str()
+                })
+                + "</div>\n"
+                + tab_content.as_str()
             }
         }
     }
