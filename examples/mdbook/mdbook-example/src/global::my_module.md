@@ -11,17 +11,11 @@ My own module.
 fn hello_world()
 fn hello_world(message: String)
 ```
-
-<details>
-<summary markdown="span"> details </summary>
-
 <div class="tab">
 <button class="tablinks" onclick="openTab(event, 'hello_world-description')">description</button>
                     
 <button class="tablinks" onclick="openTab(event, 'hello_world-Args')">Args</button>
                         <div id="hello_world-description" class="tabcontent">A function that prints to stdout.</div><div id="hello_world-Args" class="tabcontent">* message - append a message to the greeting. (optional)
-</details>
-
 </div>
 </br>
 
@@ -32,14 +26,8 @@ fn hello_world(message: String)
 ```rust,ignore
 fn add(a: int, b: int) -> int
 ```
-
-<details>
-<summary markdown="span"> details </summary>
-
 <div class="tab">
 <button class="tablinks" onclick="openTab(event, 'add-description')">description</button>
                     <div id="add-description" class="tabcontent">A function that adds two integers together.
-</details>
-
 </div>
 </br>

@@ -197,15 +197,6 @@ fn generate_function_documentation(
                 .join("\n"),
             &metadata
                 .fmt_doc_comments(section_format)
-                .map(|doc| format!(
-                    r#"
-<details>
-<summary markdown="span"> details </summary>
-
-{doc}
-</details>
-"#
-                ))
                 .unwrap_or_default()
         ))
     } else {
