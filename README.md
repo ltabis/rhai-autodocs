@@ -2,6 +2,8 @@
 
 Generate Markdown documentation from a `rhai::Engine` instance.
 
+![generated documentation](assets/tabs.png)
+
 ## Features
 
 - Output Rhai documentation as Markdown w/ HTML.
