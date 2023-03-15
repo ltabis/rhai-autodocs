@@ -31,7 +31,7 @@ fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
 
 impl FunctionMetadata {
     /// Format the function doc comments to make them
-    /// readable markdown.
+    /// into readable markdown.
     pub fn fmt_doc_comments(&self, section_format: &crate::SectionFormat) -> Option<String> {
         self.doc_comments.clone().map(|dc| {
             let removed_extra_tokens = remove_extra_tokens(dc).join("\n");
