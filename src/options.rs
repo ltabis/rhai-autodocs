@@ -162,7 +162,7 @@ impl SectionFormat {
                 let mut tab_content = dc.lines().fold(
                     format!(
                         r#"
-<div id="{function_name}-description" markdown="span" class="tabcontent active">
+<div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
 "#
                     ),
                     |mut state, line| {
@@ -170,7 +170,7 @@ impl SectionFormat {
                             sections.push(section);
                             state.push_str("\n</div>\n");
                             state.push_str(&format!(
-                                r#"<div id="{function_name}-{section}" class="tabcontent">
+                                r#"<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
 "#
                             ));
                         } else {
@@ -188,11 +188,11 @@ impl SectionFormat {
                     format!(
                         r#"
 <div class="tab">
-    <button class="tablinks" onclick="openTab(event, '{function_name}-description')">Description</button>"#),
+    <button group="{function_name}" id="link-{function_name}-description" class="tablinks active" onclick="openTab(event, '{function_name}', 'description')">Description</button>"#),
                     |state, section| {
                         state + format!(
                             r#"
-    <button class="tablinks" onclick="openTab(event, '{function_name}-{section}')">{section}</button>"#
+    <button group="{function_name}" id="link-{function_name}-{section}" class="tablinks" onclick="openTab(event, '{function_name}', '{section}')">{section}</button>"#
                         ).as_str()
                 })
                 + "</div>\n"
