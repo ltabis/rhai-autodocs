@@ -7,10 +7,11 @@ cargo install mdbook
 cargo init name-of-my-book
 ```
 
-Add the default css to the book in the `book.toml` file.
+Add the default css and javascript for tabs to the book in the `book.toml` file.
 
 ```toml
 additional-css = ["rhai-autodocs/styles/default.css"]
+additional-css = ["rhai-autodocs/src/tabs.js"]
 ```
 
 ## Test and build
