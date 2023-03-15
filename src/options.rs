@@ -170,7 +170,8 @@ impl SectionFormat {
                             sections.push(section);
                             state.push_str("\n</div>\n");
                             state.push_str(&format!(
-                                r#"<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
+                                r#"
+<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
 "#
                             ));
                         } else {
@@ -188,15 +189,30 @@ impl SectionFormat {
                     format!(
                         r#"
 <div class="tab">
-    <button group="{function_name}" id="link-{function_name}-description" class="tablinks active" onclick="openTab(event, '{function_name}', 'description')">Description</button>"#),
+    <button
+    group="{function_name}"
+    id="link-{function_name}-description"
+    class="tablinks active"
+    onclick="openTab(event, '{function_name}', 'description')">
+        Description
+    </button>"#
+                    ),
                     |state, section| {
-                        state + format!(
-                            r#"
-    <button group="{function_name}" id="link-{function_name}-{section}" class="tablinks" onclick="openTab(event, '{function_name}', '{section}')">{section}</button>"#
-                        ).as_str()
-                })
-                + "</div>\n"
-                + tab_content.as_str()
+                        state
+                            + format!(
+                                r#"
+    <button
+    group="{function_name}"
+    id="link-{function_name}-{section}"
+    class="tablinks"
+    onclick="openTab(event, '{function_name}', '{section}')">
+        {section}
+    </button>"#
+                            )
+                            .as_str()
+                    },
+                ) + "</div>\n"
+                    + tab_content.as_str()
             }
         }
     }
