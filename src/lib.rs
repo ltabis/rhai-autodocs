@@ -101,7 +101,9 @@ fn generate_module_documentation(
             .map(|(name, polymorphisms)| (name, polymorphisms))
             .collect::<Vec<_>>();
 
-        let fn_groups = options.order.order_function_groups(function_groups)?;
+        let fn_groups = options
+            .functions_order
+            .order_function_groups(function_groups)?;
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only
@@ -128,6 +130,7 @@ fn generate_module_documentation(
                 engine,
                 &name.replace("get$", "").replace("set$", ""),
                 &polymorphisms[..],
+                &options.sections_format,
             ) {
                 md.documentation += &fn_doc;
             }
@@ -156,6 +159,7 @@ fn generate_function_documentation(
     engine: &rhai::Engine,
     name: &str,
     polymorphisms: &[&FunctionMetadata],
+    section_format: &SectionFormat,
 ) -> Option<String> {
     let metadata = polymorphisms.first().expect("will never be empty");
     let root_definition = generate_function_definition(engine, metadata);
@@ -192,16 +196,7 @@ fn generate_function_documentation(
                 .collect::<Vec<_>>()
                 .join("\n"),
             &metadata
-                .fmt_doc_comments()
-                .map(|doc| format!(
-                    r#"
-<details>
-<summary markdown="span"> details </summary>
-
-{doc}
-</details>
-"#
-                ))
+                .fmt_doc_comments(section_format)
                 .unwrap_or_default()
         ))
     } else {
@@ -383,7 +378,7 @@ pub mod test {
         // register custom functions and types ...
         let docs = options::options()
             .include_standard_packages(false)
-            .order_with(FunctionOrder::ByIndex)
+            .order_functions_with(FunctionOrder::ByIndex)
             .generate(&engine)
             .expect("failed to generate documentation");
 

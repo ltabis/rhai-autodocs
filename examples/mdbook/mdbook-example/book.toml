@@ -1,0 +1,10 @@
+[book]
+authors = ["ltabis"]
+language = "en"
+multilingual = false
+src = "src"
+title = "rhai-autodocs"
+
+[output.html]
+additional-css = ["./theme/default.css"]
+additional-js = ["./theme/tabs.js"]

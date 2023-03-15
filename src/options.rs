@@ -8,7 +8,8 @@ pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 #[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
-    pub(crate) order: FunctionOrder,
+    pub(crate) functions_order: FunctionOrder,
+    pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
 }
 
@@ -28,8 +29,17 @@ impl Options {
 
     /// Order functions in a specific way.
     /// See [`FunctionOrder`] for more details.
-    pub fn order_with(mut self, order: FunctionOrder) -> Self {
-        self.order = order;
+    pub fn order_functions_with(mut self, functions_order: FunctionOrder) -> Self {
+        self.functions_order = functions_order;
+
+        self
+    }
+
+    /// Format doc comments 'sections', markdown that starts with the `#` character,
+    /// with special formats.
+    /// See [`SectionFormat`] for more details.
+    pub fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
+        self.sections_format = sections_format;
 
         self
     }
@@ -128,5 +138,82 @@ pub enum SectionFormat {
     Rust,
     /// Display sections using tabs that wraps all underlying
     /// documentation in them.
+    ///
+    /// NOTE: [`SectionFormat::fmt_sections`] is called after [`remove_test_code`],
+    /// so checking for code blocks and `#` line start is not required because it
+    /// was supposed to be removed.
     Tabs,
+}
+
+impl SectionFormat {
+    pub(crate) fn fmt_sections(&self, function_name: &str, dc: String) -> String {
+        match self {
+            crate::SectionFormat::Rust => format!(
+                r#"
+<details>
+<summary markdown="span"> details </summary>
+
+{dc}
+</details>
+"#
+            ),
+            crate::SectionFormat::Tabs => {
+                let mut sections = vec![];
+                let mut tab_content = dc.lines().fold(
+                    format!(
+                        r#"
+<div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
+"#
+                    ),
+                    |mut state, line| {
+                        if let Some((_, section)) = line.split_once("# ") {
+                            sections.push(section);
+                            state.push_str("\n</div>\n");
+                            state.push_str(&format!(
+                                r#"
+<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
+"#
+                            ));
+                        } else {
+                            state.push_str(line);
+                            state.push('\n');
+                        }
+
+                        state
+                    },
+                );
+
+                tab_content += "</div>\n";
+
+                sections.into_iter().fold(
+                    format!(
+                        r#"
+<div class="tab">
+    <button
+    group="{function_name}"
+    id="link-{function_name}-description"
+    class="tablinks active"
+    onclick="openTab(event, '{function_name}', 'description')">
+        Description
+    </button>"#
+                    ),
+                    |state, section| {
+                        state
+                            + format!(
+                                r#"
+    <button
+    group="{function_name}"
+    id="link-{function_name}-{section}"
+    class="tablinks"
+    onclick="openTab(event, '{function_name}', '{section}')">
+        {section}
+    </button>"#
+                            )
+                            .as_str()
+                    },
+                ) + "</div>\n"
+                    + tab_content.as_str()
+            }
+        }
+    }
 }

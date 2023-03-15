@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use rhai::plugin::*;
 
 /// My own module.
@@ -31,6 +29,15 @@ mod my_module {
 
     /// A function that adds two integers together.
     ///
+    /// # Args
+    ///
+    /// * a - the first integer.
+    /// * b - the second integer.
+    ///
+    /// # Return
+    ///
+    /// * An integer, the result of the addition of `a` and `b`.
+    ///
     /// # rhai-autodocs:index:2
     #[rhai_fn(global)]
     pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
@@ -43,14 +50,15 @@ fn main() {
 
     engine.register_static_module("my_module", exported_module!(my_module).into());
 
-    let path = "./my-module.md";
-
     // register custom functions and types ...
     let docs = rhai_autodocs::options()
         .include_standard_packages(false)
         .order_functions_with(rhai_autodocs::options::FunctionOrder::ByIndex)
+        .format_sections_with(rhai_autodocs::options::SectionFormat::Tabs)
         .generate(&engine)
         .expect("failed to generate documentation");
+
+    let path = "./examples/mdbook/mdbook-example/src";
 
     // Write the documentation in a file.
     write_docs(path, &docs);
@@ -60,7 +68,7 @@ fn main() {
 
 fn write_docs(path: &str, docs: &rhai_autodocs::ModuleDocumentation) {
     std::fs::write(
-        std::path::PathBuf::from_str(path).unwrap(),
+        std::path::PathBuf::from_iter([path, &format!("{}.md", &docs.name)]),
         &docs.documentation,
     )
     .expect("failed to write documentation");
