@@ -161,7 +161,10 @@ fn generate_function_documentation(
     polymorphisms: &[&FunctionMetadata],
     section_format: &SectionFormat,
 ) -> Option<String> {
-    let metadata = polymorphisms.first().expect("will never be empty");
+    // Takes the first valid comments found for a function group.
+    let metadata = polymorphisms
+        .iter()
+        .find(|metadata| metadata.doc_comments.is_some())?;
     let root_definition = generate_function_definition(engine, metadata);
 
     // Anonymous functions are ignored.

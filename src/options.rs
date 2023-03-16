@@ -112,7 +112,14 @@ impl FunctionOrder {
                                 .parse::<usize>()
                                 .map_err(|err| AutodocsError::PreProcessing(err.to_string()))?;
 
-                            ordered[index - 1] = (function, polymorphisms);
+                            if let Some(slot) = ordered.get_mut(index - 1) {
+                                *slot = (function, polymorphisms);
+                            } else {
+                                return Err(AutodocsError::PreProcessing(format!(
+                                    "`# rhai-autodocs:index:?` index is out of bounds for the function `{function}`. It is probably because you set `# rhai-autodocs:index:?` for functions that are polymorphes of each other. Try to set your documentation only on one function of the group and add the `#[doc(hidden)]` pre-processor to the rest of the functions."
+                                )));
+                            }
+
                             continue 'groups;
                         }
                     }
