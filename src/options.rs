@@ -259,7 +259,7 @@ impl SectionFormat {
                                 content.push_str(
                                     // Removing rust links wrapped in the '<>' characters because they
                                     // are treated as components.
-                                    &line.replace('<', "").replace('>', "")
+                                    &line.replace(['<', '>'], "")
                                 );
                                 content.push('\n');
                             }
