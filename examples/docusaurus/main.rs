@@ -55,11 +55,11 @@ fn main() {
         .include_standard_packages(false)
         .order_functions_with(rhai_autodocs::options::FunctionOrder::ByIndex)
         .format_sections_with(rhai_autodocs::options::SectionFormat::Tabs)
-        .for_markdown_processor(rhai_autodocs::options::MarkdownProcessor::MdBook)
+        .for_markdown_processor(rhai_autodocs::options::MarkdownProcessor::Docusaurus)
         .generate(&engine)
         .expect("failed to generate documentation");
 
-    let path = "./examples/mdbook/mdbook-example/src";
+    let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
 
     // Write the documentation in a file.
     write_docs(path, &docs);
@@ -69,7 +69,7 @@ fn main() {
 
 fn write_docs(path: &str, docs: &rhai_autodocs::ModuleDocumentation) {
     std::fs::write(
-        std::path::PathBuf::from_iter([path, &format!("{}.md", &docs.name)]),
+        std::path::PathBuf::from_iter([path, &format!("{}.mdx", &docs.name)]),
         &docs.documentation,
     )
     .expect("failed to write documentation");
