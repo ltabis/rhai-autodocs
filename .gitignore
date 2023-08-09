@@ -12,22 +12,22 @@ Cargo.lock
 # Docusaurus example
 
 # Dependencies
-examples/docusaurus/node_modules
+examples/docusaurus/docusaurus-example/node_modules
 
 # Production
-examples/docusaurus/build
+examples/docusaurus/docusaurus-example/build
 
 # Generated files
-examples/docusaurus/.docusaurus
-examples/docusaurus/.cache-loader
+examples/docusaurus/docusaurus-example/.docusaurus
+examples/docusaurus/docusaurus-example/.cache-loader
 
 # Misc
-examples/docusaurus/.DS_Store
-examples/docusaurus/.env.local
-examples/docusaurus/.env.development.local
-examples/docusaurus/.env.test.local
-examples/docusaurus/.env.production.local
+examples/docusaurus/docusaurus-example/.DS_Store
+examples/docusaurus/docusaurus-example/.env.local
+examples/docusaurus/docusaurus-example/.env.development.local
+examples/docusaurus/docusaurus-example/.env.test.local
+examples/docusaurus/docusaurus-example/.env.production.local
 
-examples/docusaurus/npm-debug.log*
-examples/docusaurus/yarn-debug.log*
-examples/docusaurus/yarn-error.log*
+examples/docusaurus/docusaurus-example/npm-debug.log*
+examples/docusaurus/docusaurus-example/yarn-debug.log*
+examples/docusaurus/docusaurus-example/yarn-error.log*
