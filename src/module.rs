@@ -6,6 +6,8 @@ use crate::{fmt_doc_comments, remove_test_code};
 #[derive(Debug)]
 /// Rhai module documentation in markdown format.
 pub struct ModuleDocumentation {
+    /// Complete path to the module.
+    pub namespace: String,
     /// Name of the module.
     pub name: String,
     /// Sub modules.

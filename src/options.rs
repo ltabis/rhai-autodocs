@@ -5,12 +5,23 @@ use crate::{
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
+/// Types of markdown processor where the documentation generated will be hosted.
+#[derive(Default)]
+pub enum MarkdownProcessor {
+    /// Generate documentation for mdbook: <https://rust-lang.github.io/mdBook/>
+    MdBook,
+    /// Generate documentation for docusaurus. <https://docusaurus.io/>
+    #[default]
+    Docusaurus,
+}
+
 #[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
     pub(crate) functions_order: FunctionOrder,
     pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
+    pub(crate) markdown_processor: MarkdownProcessor,
 }
 
 /// Create new options used to configure docs generation.
@@ -40,6 +51,14 @@ impl Options {
     /// See [`SectionFormat`] for more details.
     pub fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
         self.sections_format = sections_format;
+
+        self
+    }
+
+    /// Generate markdown code compatible for a specific markdown processor.
+    /// See [`MarkdownProcessor`] for more details.
+    pub fn for_markdown_processor(mut self, markdown_processor: MarkdownProcessor) -> Self {
+        self.markdown_processor = markdown_processor;
 
         self
     }
@@ -153,73 +172,103 @@ pub enum SectionFormat {
 }
 
 impl SectionFormat {
-    pub(crate) fn fmt_sections(&self, function_name: &str, dc: String) -> String {
+    pub(crate) fn fmt_sections(
+        &self,
+        function_name: &str,
+        markdown_processor: &MarkdownProcessor,
+        docs: String,
+    ) -> String {
         match self {
             crate::SectionFormat::Rust => format!(
                 r#"
 <details>
 <summary markdown="span"> details </summary>
 
-{dc}
+{docs}
 </details>
 "#
             ),
             crate::SectionFormat::Tabs => {
-                let mut sections = vec![];
-                let mut tab_content = dc.lines().fold(
-                    format!(
-                        r#"
-<div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
-"#
-                    ),
-                    |mut state, line| {
-                        if let Some((_, section)) = line.split_once("# ") {
-                            sections.push(section);
-                            state.push_str("\n</div>\n");
-                            state.push_str(&format!(
+                match markdown_processor {
+                    MarkdownProcessor::MdBook => {
+                        let mut sections = vec![];
+                        let mut tab_content = docs.lines().fold(
+                            format!(
                                 r#"
-<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
-"#
-                            ));
-                        } else {
-                            state.push_str(line);
-                            state.push('\n');
-                        }
-
-                        state
-                    },
-                );
-
-                tab_content += "</div>\n";
-
-                sections.into_iter().fold(
-                    format!(
-                        r#"
+        <div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
+        "#
+                            ),
+                            |mut state, line| {
+                                if let Some((_, section)) = line.split_once("# ") {
+                                    sections.push(section);
+                                    state.push_str("\n</div>\n");
+                                    state.push_str(&format!(
+                                        r#"
+        <div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
+        "#
+                                    ));
+                                } else {
+                                    state.push_str(line);
+                                    state.push('\n');
+                                }
+        
+                                state
+                            },
+                        );
+        
+                        tab_content += "</div>\n";
+        
+                        sections.into_iter().fold(
+                            format!(
+                                r#"
 <div class="tab">
     <button
-    group="{function_name}"
-    id="link-{function_name}-description"
-    class="tablinks active"
-    onclick="openTab(event, '{function_name}', 'description')">
+        group="{function_name}"
+        id="link-{function_name}-description"
+        class="tablinks active"
+        onclick="openTab(event, '{function_name}', 'description')">
         Description
     </button>"#
-                    ),
-                    |state, section| {
-                        state
-                            + format!(
-                                r#"
-    <button
+                            ),
+                            |state, section| {
+                                state
+                                    + format!(
+                                        r#"
+<button
     group="{function_name}"
     id="link-{function_name}-{section}"
     class="tablinks"
     onclick="openTab(event, '{function_name}', '{section}')">
-        {section}
-    </button>"#
-                            )
-                            .as_str()
+    {section}
+</button>"#
+                                    )
+                                    .as_str()
+                            },
+                        ) + "</div>\n"
+                            + tab_content.as_str()
                     },
-                ) + "</div>\n"
-                    + tab_content.as_str()
+
+                    MarkdownProcessor::Docusaurus => {
+                        let mut content = "<Tabs>\n<TabItem value=\"Description\" default>\n".to_string();
+
+                        for line in docs.lines() {
+                            if let Some((_, section)) = line.split_once("# ") {
+                                content.push_str("</TabItem>\n\n");
+                                content.push_str(&format!("<TabItem value=\"{section}\" default>\n"));
+                            } else {
+                                content.push_str(
+                                    // Removing rust links wrapped in the '<>' characters because they
+                                    // are treated as components.
+                                    &line.replace(['<', '>'], "")
+                                );
+                                content.push('\n');
+                            }
+                        }
+
+                        content += "\n</TabItem>\n</Tabs>\n";
+                        content
+                    }
+                }
             }
         }
     }

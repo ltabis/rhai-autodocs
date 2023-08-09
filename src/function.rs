@@ -32,13 +32,17 @@ fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
 impl FunctionMetadata {
     /// Format the function doc comments to make them
     /// into readable markdown.
-    pub fn fmt_doc_comments(&self, section_format: &crate::SectionFormat) -> Option<String> {
+    pub fn fmt_doc_comments(
+        &self,
+        section_format: &crate::SectionFormat,
+        markdown_processor: &crate::options::MarkdownProcessor,
+    ) -> Option<String> {
         self.doc_comments.clone().map(|dc| {
             let removed_extra_tokens = remove_extra_tokens(dc).join("\n");
             let remove_comments = fmt_doc_comments(removed_extra_tokens);
             let remove_test_code = remove_test_code(&remove_comments);
 
-            section_format.fmt_sections(&self.name, remove_test_code)
+            section_format.fmt_sections(&self.name, markdown_processor, remove_test_code)
         })
     }
 }
