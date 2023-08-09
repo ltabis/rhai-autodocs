@@ -15,6 +15,8 @@ use error::AutodocsError;
 
 /// NOTE: mdbook handles this automatically, but other
 ///       markdown processors might not.
+/// Remove lines of code that starts with the '#' token,
+/// which are removed on rust docs automatically.
 fn remove_test_code(doc_comments: &str) -> String {
     let mut formatted = vec![];
     let mut in_code_block = false;
@@ -62,24 +64,56 @@ fn generate_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation(engine, &options, "global", metadata)
+    generate_module_documentation(engine, &options, None, "global", metadata)
 }
 
 fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
-    namespace: &str,
+    namespace: Option<String>,
+    name: impl Into<String>,
     metadata: ModuleMetadata,
 ) -> Result<ModuleDocumentation, AutodocsError> {
+    let name = name.into();
+    let namespace = namespace.map_or(name.clone(), |namespace| namespace);
+
+    let documentation = match options.markdown_processor {
+        options::MarkdownProcessor::MdBook => {
+            format!(
+                r#"# {}
+
+{}"#,
+                &name,
+                metadata
+                    .fmt_doc_comments()
+                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
+            )
+        }
+        options::MarkdownProcessor::Docusaurus => {
+            format!(
+                r#"---
+title: {}
+slug: /{}
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+{}"#,
+                &name,
+                &namespace,
+                metadata
+                    .fmt_doc_comments()
+                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
+            )
+        }
+    };
+
     let mut md = ModuleDocumentation {
-        name: namespace.to_owned(),
+        namespace: namespace.clone(),
+        name,
         sub_modules: vec![],
-        documentation: format!(
-            "# {namespace}\n\n{}",
-            metadata
-                .fmt_doc_comments()
-                .map_or_else(String::default, |doc| format!("{doc}\n\n"))
-        ),
+        documentation,
     };
 
     if let Some(functions) = metadata.functions {
@@ -128,9 +162,9 @@ fn generate_module_documentation(
         for (name, polymorphisms) in fn_groups {
             if let Some(fn_doc) = generate_function_documentation(
                 engine,
+                options,
                 &name.replace("get$", "").replace("set$", ""),
                 &polymorphisms[..],
-                &options.sections_format,
             ) {
                 md.documentation += &fn_doc;
             }
@@ -143,7 +177,8 @@ fn generate_module_documentation(
             md.sub_modules.push(generate_module_documentation(
                 engine,
                 options,
-                &format!("{namespace}::{sub_module}"),
+                Some(format!("{}/{}", namespace, sub_module)),
+                &sub_module,
                 serde_json::from_value::<ModuleMetadata>(value)
                     .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
             )?);
@@ -157,9 +192,9 @@ fn generate_module_documentation(
 /// TODO: Add other word processors.
 fn generate_function_documentation(
     engine: &rhai::Engine,
+    options: &Options,
     name: &str,
     polymorphisms: &[&FunctionMetadata],
-    section_format: &SectionFormat,
 ) -> Option<String> {
     // Takes the first valid comments found for a function group.
     let metadata = polymorphisms
@@ -169,8 +204,10 @@ fn generate_function_documentation(
 
     // Anonymous functions are ignored.
     if !name.starts_with("anon$") {
-        Some(format!(
-            r#"
+        match options.markdown_processor {
+            options::MarkdownProcessor::MdBook => {
+                Some(format!(
+                    r#"
 <div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
 
 <h2 class="func-name"> <code>{}</code> {} </h2>
@@ -182,26 +219,57 @@ fn generate_function_documentation(
 </div>
 </br>
 "#,
-            // Add a specific prefix for the function type documented.
-            if root_definition.starts_with("op") {
-                "op"
-            } else if root_definition.starts_with("fn get ") {
-                "get"
-            } else if root_definition.starts_with("fn set ") {
-                "set"
-            } else {
-                "fn"
-            },
-            name,
-            polymorphisms
-                .iter()
-                .map(|metadata| generate_function_definition(engine, metadata))
-                .collect::<Vec<_>>()
-                .join("\n"),
-            &metadata
-                .fmt_doc_comments(section_format)
-                .unwrap_or_default()
-        ))
+                    // Add a specific prefix for the function type documented.
+                    if root_definition.starts_with("op") {
+                        "op"
+                    } else if root_definition.starts_with("fn get ") {
+                        "get"
+                    } else if root_definition.starts_with("fn set ") {
+                        "set"
+                    } else {
+                        "fn"
+                    },
+                    name,
+                    polymorphisms
+                        .iter()
+                        .map(|metadata| generate_function_definition(engine, metadata))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    &metadata
+                        .fmt_doc_comments(&options.sections_format, &options.markdown_processor)
+                        .unwrap_or_default()
+                ))
+            }
+            options::MarkdownProcessor::Docusaurus => {
+                Some(format!(
+                    r#"## <code>{}</code> {}
+```js
+{}
+```
+{}
+"#,
+                    // Add a specific prefix for the function type documented.
+                    if root_definition.starts_with("op") {
+                        "op"
+                    } else if root_definition.starts_with("fn get ") {
+                        "get"
+                    } else if root_definition.starts_with("fn set ") {
+                        "set"
+                    } else {
+                        "fn"
+                    },
+                    name,
+                    polymorphisms
+                        .iter()
+                        .map(|metadata| generate_function_definition(engine, metadata))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    &metadata
+                        .fmt_doc_comments(&options.sections_format, &options.markdown_processor)
+                        .unwrap_or_default()
+                ))
+            }
+        }
     } else {
         None
     }
@@ -490,6 +558,7 @@ let map = #{
         let docs = options::options()
             .include_standard_packages(false)
             .order_functions_with(FunctionOrder::ByIndex)
+            .for_markdown_processor(options::MarkdownProcessor::MdBook)
             .generate(&engine)
             .expect("failed to generate documentation");
 
@@ -498,10 +567,10 @@ let map = #{
 
         let my_module = &docs.sub_modules[0];
 
-        assert_eq!(my_module.name, "global::my_module");
+        assert_eq!(my_module.name, "my_module");
         pretty_assertions::assert_eq!(
             my_module.documentation,
-            r#"# global::my_module
+            r#"# my_module
 
 My own module.
 
