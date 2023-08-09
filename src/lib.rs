@@ -82,8 +82,11 @@ fn generate_module_documentation(
             format!(
                 r#"# {}
 
+```Namespace: {}```
+
 {}"#,
                 &name,
+                &namespace,
                 metadata
                     .fmt_doc_comments()
                     .map_or_else(String::default, |doc| format!("{doc}\n\n"))
@@ -99,8 +102,11 @@ slug: /{}
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
+```Namespace: {}```
+
 {}"#,
                 &name,
+                &namespace,
                 &namespace,
                 metadata
                     .fmt_doc_comments()
@@ -563,7 +569,10 @@ let map = #{
             .expect("failed to generate documentation");
 
         assert_eq!(docs.name, "global");
-        assert_eq!(docs.documentation, "# global\n\n");
+        assert_eq!(
+            docs.documentation,
+            "# global\n\n```Namespace: global```\n\n"
+        );
 
         let my_module = &docs.sub_modules[0];
 
@@ -571,6 +580,8 @@ let map = #{
         pretty_assertions::assert_eq!(
             my_module.documentation,
             r#"# my_module
+
+```Namespace: global/my_module```
 
 My own module.
 
