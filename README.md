@@ -5,7 +5,7 @@ Generate Markdown/MDX documentation from a `rhai::Engine` instance.
 Published with [Mdbook](https://rust-lang.github.io/mdBook/index.html).
 ![generated documentation for mdbook](assets/mdbook.png)
 Published with [Docusaurus](https://docusaurus.io/).
-![generated documentation for docusaurus](assets/docusaurus.png)
+![generated documentation for docusaurus](assets/docusaurus.jpg)
 
 ## Features
 
