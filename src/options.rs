@@ -107,6 +107,7 @@ pub enum FunctionOrder {
 impl FunctionOrder {
     pub(crate) fn order_function_groups<'a>(
         &'_ self,
+        module_namespace: &str,
         mut function_groups: Vec<(String, Vec<&'a FunctionMetadata>)>,
     ) -> Result<Vec<(String, Vec<&'a FunctionMetadata>)>, AutodocsError> {
         match self {
@@ -118,21 +119,21 @@ impl FunctionOrder {
             FunctionOrder::ByIndex => {
                 let mut ordered = function_groups.clone();
 
-                'groups: for (function, polymorphisms) in function_groups {
-                    for metadata in polymorphisms
+                'groups: for (function, polymorphisms) in &function_groups {
+                    for comments in polymorphisms
                         .iter()
                         .filter_map(|item| item.doc_comments.as_ref())
                     {
-                        if let Some((_, index)) = metadata
+                        if let Some((_, index)) = comments
                             .iter()
                             .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
                         {
                             let index = index
                                 .parse::<usize>()
-                                .map_err(|err| AutodocsError::PreProcessing(err.to_string()))?;
+                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {}", err.to_string())))?;
 
                             if let Some(slot) = ordered.get_mut(index - 1) {
-                                *slot = (function, polymorphisms);
+                                *slot = (function.clone(), polymorphisms.clone());
                             } else {
                                 return Err(AutodocsError::PreProcessing(format!(
                                     "`# rhai-autodocs:index:?` index is out of bounds for the function `{function}`. It is probably because you set `# rhai-autodocs:index:?` for functions that are polymorphes of each other. Try to set your documentation only on one function of the group and add the `#[doc(hidden)]` pre-processor to the rest of the functions."
@@ -144,8 +145,8 @@ impl FunctionOrder {
                     }
 
                     return Err(AutodocsError::PreProcessing(format!(
-                        "missing ord metadata in function {function}"
-                    )));
+                        "missing order metadata in function {module_namespace}/{function}")
+                    ));
                 }
 
                 Ok(ordered)

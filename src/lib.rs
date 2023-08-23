@@ -143,7 +143,7 @@ import TabItem from '@theme/TabItem';
 
         let fn_groups = options
             .functions_order
-            .order_function_groups(function_groups)?;
+            .order_function_groups(&namespace, function_groups)?;
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only
