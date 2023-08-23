@@ -139,7 +139,7 @@ impl FunctionOrder {
                         {
                             let index = index
                                 .parse::<usize>()
-                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {}", err.to_string())))?;
+                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {err}")))?;
 
                             if let Some(slot) = ordered.get_mut(index - 1) {
                                 *slot = (function.clone(), polymorphisms.clone());
