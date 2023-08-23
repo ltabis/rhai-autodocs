@@ -101,6 +101,15 @@ pub enum FunctionOrder {
     /// #[rhai_fn(global)]
     /// pub fn my_function2() {}
     /// ```
+    /// 
+    /// Adding, removing or re-ordering your functions from your api can be a chore
+    /// because you have to update all indexes by hand. Thankfully, you will found
+    /// a python script in the `scripts` folder of the `rhai-autodocs` repository
+    /// that will update the indexes by hand just for you.
+    /// 
+    /// The script generates a .autodocs file from your original source file,
+    /// make sure to check that it did not mess with your source code using
+    /// a diff tool.
     ByIndex,
 }
 
@@ -130,7 +139,7 @@ impl FunctionOrder {
                         {
                             let index = index
                                 .parse::<usize>()
-                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {}", err.to_string())))?;
+                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {err}")))?;
 
                             if let Some(slot) = ordered.get_mut(index - 1) {
                                 *slot = (function.clone(), polymorphisms.clone());
