@@ -7,7 +7,7 @@ pub mod options;
 
 use function::FunctionMetadata;
 pub use module::ModuleDocumentation;
-use module::ModuleMetadata;
+use module::{ModuleGlossary, ModuleMetadata};
 use options::Options;
 pub use options::{options, FunctionOrder, SectionFormat};
 
@@ -55,7 +55,7 @@ fn fmt_doc_comments(dc: String) -> String {
 /// * Failed to parse module metadata.
 fn generate_documentation(
     engine: &rhai::Engine,
-    options: Options,
+    options: &Options,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
@@ -64,7 +64,33 @@ fn generate_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation(engine, &options, None, "global", metadata)
+    generate_module_documentation(engine, &options, None, "global", &metadata)
+}
+
+/// Generate documentation based on an engine instance and a glossary of all functions.
+/// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
+///
+/// # Result
+/// * A vector of documented modules.
+///
+/// # Errors
+/// * Failed to generate function metadata as json.
+/// * Failed to parse module metadata.
+fn generate_documentation_with_glossary(
+    engine: &rhai::Engine,
+    options: &Options,
+) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+    let json_fns = engine
+        .gen_fn_metadata_to_json(options.include_standard_packages)
+        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+
+    let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
+        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+
+    Ok((
+        generate_module_documentation(engine, &options, None, "global", &metadata)?,
+        generate_module_glossary(engine, options, None, "global", &metadata)?,
+    ))
 }
 
 fn generate_module_documentation(
@@ -72,7 +98,7 @@ fn generate_module_documentation(
     options: &Options,
     namespace: Option<String>,
     name: impl Into<String>,
-    metadata: ModuleMetadata,
+    metadata: &ModuleMetadata,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
@@ -122,28 +148,8 @@ import TabItem from '@theme/TabItem';
         documentation,
     };
 
-    if let Some(functions) = metadata.functions {
-        let mut function_groups =
-            std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
-
-        // Rhai function can be polymorphes, so we group them by name.
-        functions.iter().for_each(|metadata| {
-            match function_groups.get_mut(&metadata.name) {
-                Some(polymorphisms) => polymorphisms.push(metadata),
-                None => {
-                    function_groups.insert(metadata.name.clone(), vec![metadata]);
-                }
-            };
-        });
-
-        let function_groups = function_groups
-            .into_iter()
-            .map(|(name, polymorphisms)| (name, polymorphisms))
-            .collect::<Vec<_>>();
-
-        let fn_groups = options
-            .functions_order
-            .order_function_groups(&namespace, function_groups)?;
+    if let Some(functions) = &metadata.functions {
+        let fn_groups = group_functions(options, &namespace, functions)?;
 
         // Generate a clean documentation for each functions.
         // Functions that share the same name will keep only
@@ -178,20 +184,100 @@ import TabItem from '@theme/TabItem';
     }
 
     // Generate documentation for each submodule. (if any)
-    if let Some(sub_modules) = metadata.modules {
+    if let Some(sub_modules) = &metadata.modules {
         for (sub_module, value) in sub_modules {
             md.sub_modules.push(generate_module_documentation(
                 engine,
                 options,
                 Some(format!("{}/{}", namespace, sub_module)),
-                &sub_module,
-                serde_json::from_value::<ModuleMetadata>(value)
+                sub_module,
+                &serde_json::from_value::<ModuleMetadata>(value.clone())
                     .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
             )?);
         }
     }
 
     Ok(md)
+}
+
+fn generate_module_glossary(
+    engine: &rhai::Engine,
+    options: &Options,
+    namespace: Option<String>,
+    name: impl Into<String>,
+    metadata: &ModuleMetadata,
+) -> Result<ModuleGlossary, AutodocsError> {
+    let name = name.into();
+    let namespace = namespace.map_or(name.clone(), |namespace| namespace);
+
+    let signatures = if let Some(functions) = &metadata.functions {
+        let fn_groups = group_functions(options, &namespace, functions)?;
+        let mut signatures = String::default();
+
+        for (_, polymorphisms) in fn_groups {
+            for p in polymorphisms {
+                signatures += &format!("- `{}`\n", generate_function_definition(engine, p));
+            }
+        }
+
+        signatures
+    } else {
+        String::default()
+    };
+
+    let mut mg = ModuleGlossary {
+        content: format!("### {name}\n{signatures}"),
+    };
+
+    // Generate signatures for each submodule. (if any)
+    if let Some(sub_modules) = &metadata.modules {
+        for (sub_module, value) in sub_modules {
+            mg.content.push_str(&{
+                let mg = generate_module_glossary(
+                    engine,
+                    options,
+                    Some(format!("{}/{}", namespace, sub_module)),
+                    sub_module,
+                    &serde_json::from_value::<ModuleMetadata>(value.clone())
+                        .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
+                )?;
+
+                mg.content
+            });
+        }
+    }
+
+    Ok(mg)
+}
+
+fn group_functions<'re, 'meta>(
+    options: &Options,
+    namespace: &str,
+    functions: &'meta Vec<FunctionMetadata>,
+) -> Result<Vec<(String, Vec<&'meta FunctionMetadata>)>, AutodocsError> {
+    let mut function_groups =
+        std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
+
+    // Rhai function can be polymorphes, so we group them by name.
+    functions.iter().for_each(|metadata| {
+        match function_groups.get_mut(&metadata.name) {
+            Some(polymorphisms) => polymorphisms.push(metadata),
+            None => {
+                function_groups.insert(metadata.name.clone(), vec![metadata]);
+            }
+        };
+    });
+
+    let function_groups = function_groups
+        .into_iter()
+        .map(|(name, polymorphisms)| (name, polymorphisms))
+        .collect::<Vec<_>>();
+
+    let fn_groups = options
+        .functions_order
+        .order_function_groups(&namespace, function_groups)?;
+
+    Ok(fn_groups)
 }
 
 /// Generate markdown/html documentation for a function.

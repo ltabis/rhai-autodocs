@@ -1,6 +1,6 @@
 use crate::{
     error::AutodocsError, function::FunctionMetadata, generate_documentation,
-    module::ModuleDocumentation,
+    module::{ModuleDocumentation, ModuleGlossary}, generate_documentation_with_glossary,
 };
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
@@ -73,7 +73,20 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
-        generate_documentation(engine, self)
+        generate_documentation(engine, &self)
+    }
+
+    /// Generate documentation based on an engine instance and a list of all functions signature.
+    /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
+    ///
+    /// # Result
+    /// * A vector of documented modules and the glossary.
+    ///
+    /// # Errors
+    /// * Failed to generate function metadata as json.
+    /// * Failed to parse module metadata.
+    pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+        generate_documentation_with_glossary(engine, self)
     }
 }
 
@@ -114,6 +127,7 @@ pub enum FunctionOrder {
 }
 
 impl FunctionOrder {
+    /// Order functions following the [`FunctionOrder`] option.
     pub(crate) fn order_function_groups<'a>(
         &'_ self,
         module_namespace: &str,

@@ -36,3 +36,10 @@ impl ModuleMetadata {
             .map(|dc| remove_test_code(&fmt_doc_comments(dc)))
     }
 }
+
+/// Glossary of all function for a module and it's submodules.
+#[derive(Debug)]
+pub struct ModuleGlossary {
+    /// Formated function signatures by submodules.
+    pub content: String,
+}
