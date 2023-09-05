@@ -216,7 +216,30 @@ fn generate_module_glossary(
 
         for (_, polymorphisms) in fn_groups {
             for p in polymorphisms {
-                signatures += &format!("- `{}`\n", generate_function_definition(engine, p));
+                let root_definition = generate_function_definition(engine, p);
+                // FIXME: this only works for docusaurus.
+                // TODO: customize colors.
+                signatures += &if root_definition.starts_with("op ") {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">op</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("op ")
+                    )
+                } else if root_definition.starts_with("fn get ") {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">get</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("fn get ")
+                    )
+                } else if root_definition.starts_with("fn set ") {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">set</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("fn set ")
+                    )
+                } else {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">fn</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("fn ")
+                    )
+                };
             }
         }
 
@@ -225,8 +248,18 @@ fn generate_module_glossary(
         String::default()
     };
 
+    // FIXME: this only works for docusaurus.
     let mut mg = ModuleGlossary {
-        content: format!("### {name}\n{signatures}"),
+        content: if name == "global" {
+            format!(
+                "{} \n\n### {}\n{}",
+                include_str!("components/highlight.js"),
+                name,
+                signatures
+            )
+        } else {
+            format!("### {}\n{}", name, signatures)
+        },
     };
 
     // Generate signatures for each submodule. (if any)
