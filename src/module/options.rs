@@ -1,6 +1,6 @@
 use crate::{
-    error::AutodocsError, function::FunctionMetadata, generate_documentation,
-    module::{ModuleDocumentation, ModuleGlossary}, generate_documentation_with_glossary,
+     function::FunctionMetadata,
+    module::ModuleDocumentation,
 };
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
@@ -73,7 +73,7 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
-        generate_documentation(engine, &self)
+        generate_module_documentation(engine, &self)
     }
 
     /// Generate documentation based on an engine instance and a list of all functions signature.
@@ -203,7 +203,7 @@ impl SectionFormat {
         docs: String,
     ) -> String {
         match self {
-            crate::SectionFormat::Rust => format!(
+            SectionFormat::Rust => format!(
                 r#"
 <details>
 <summary markdown="span"> details </summary>
@@ -212,7 +212,7 @@ impl SectionFormat {
 </details>
 "#
             ),
-            crate::SectionFormat::Tabs => {
+            SectionFormat::Tabs => {
                 match markdown_processor {
                     MarkdownProcessor::MdBook => {
                         let mut sections = vec![];
