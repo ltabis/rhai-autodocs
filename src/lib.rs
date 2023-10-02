@@ -333,11 +333,12 @@ fn generate_function_definition(engine: &rhai::Engine, metadata: &FunctionMetada
     }
 
     // Add an eventual return type.
-    if let Some(return_type) = &metadata.return_type {
-        definition + format!(") -> {}", def_type_name(return_type, engine)).as_str()
-    } else {
-        definition + ")"
-    }
+    definition
+        + match metadata.return_type.as_deref() {
+            Some("()") | None => ")".to_string(),
+            Some(t) => format!(") -> {}", def_type_name(t, engine)),
+        }
+        .as_str()
 }
 
 /// This is the code a private function in the rhai crate. It is used to map
