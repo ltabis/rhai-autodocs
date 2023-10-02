@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{fmt_doc_comments, remove_test_code};
+use crate::{
+    fmt_doc_comments,
+    module::options::{MarkdownProcessor, SectionFormat, RHAI_FUNCTION_INDEX_PATTERN},
+    remove_test_code,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +26,7 @@ fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
     dc.into_iter()
         .map(|s| {
             s.lines()
-                .filter(|l| !l.contains(crate::options::RHAI_FUNCTION_INDEX_PATTERN))
+                .filter(|l| !l.contains(RHAI_FUNCTION_INDEX_PATTERN))
                 .collect::<Vec<_>>()
                 .join("\n")
         })
@@ -35,7 +39,7 @@ impl FunctionMetadata {
     pub fn fmt_doc_comments(
         &self,
         section_format: &SectionFormat,
-        markdown_processor: &crate::options::MarkdownProcessor,
+        markdown_processor: &MarkdownProcessor,
     ) -> Option<String> {
         self.doc_comments.clone().map(|dc| {
             let removed_extra_tokens = remove_extra_tokens(dc).join("\n");
@@ -92,11 +96,12 @@ impl FunctionMetadata {
         }
 
         // Add an eventual return type.
-        if let Some(return_type) = &self.return_type {
-            definition + format!(") -> {}", def_type_name(return_type, engine)).as_str()
-        } else {
-            definition + ")"
-        }
+        definition
+            + match self.return_type.as_deref() {
+                Some("()") | None => ")".to_string(),
+                Some(t) => format!(") -> {}", def_type_name(t, engine)),
+            }
+            .as_str()
     }
 }
 

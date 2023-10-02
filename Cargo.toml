@@ -1,6 +1,6 @@
 [package]
 name = "rhai-autodocs"
-version = "0.2.1"
+version = "0.2.3"
 edition = "2021"
 authors = ["Lucas Tabis"]
 description = "Custom documentation generator for the Rhai scripting language"
@@ -18,7 +18,7 @@ keywords = [
 categories = ["development-tools"]
 
 [dependencies]
-rhai = { version = "1.16.1", features = ["metadata"] }
+rhai = { version = "1.16.2", features = ["metadata"] }
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = ["derive"] }
 
