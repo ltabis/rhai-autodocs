@@ -1,4 +1,4 @@
-use crate::module::{error::AutodocsError, ModuleMetadata};
+use crate::module::{error::AutodocsError, group_functions, options::Options, ModuleMetadata};
 
 /// Glossary of all function for a module and it's submodules.
 #[derive(Debug)]
@@ -16,10 +16,10 @@ pub struct ModuleGlossary {
 /// # Errors
 /// * Failed to generate function metadata as json.
 /// * Failed to parse module metadata.
-fn generate_glossary(
+pub fn generate_module_glossary(
     engine: &rhai::Engine,
     options: &Options,
-) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+) -> Result<ModuleGlossary, AutodocsError> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
@@ -27,13 +27,10 @@ fn generate_glossary(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    Ok((
-        generate_module_documentation(engine, &options, None, "global", &metadata)?,
-        generate_module_glossary(engine, options, None, "global", &metadata)?,
-    ))
+    generate_child_module_glossary(engine, options, None, "global", &metadata)
 }
 
-fn generate_module_glossary(
+fn generate_child_module_glossary(
     engine: &rhai::Engine,
     options: &Options,
     namespace: Option<String>,
@@ -48,8 +45,8 @@ fn generate_module_glossary(
         let mut signatures = String::default();
 
         for (_, polymorphisms) in fn_groups {
-            for p in polymorphisms {
-                let root_definition = generate_function_definition(engine, p);
+            for fn_metadata in polymorphisms {
+                let root_definition = fn_metadata.generate_function_definition(engine);
                 // FIXME: this only works for docusaurus.
                 // TODO: customize colors.
                 signatures += &if root_definition.starts_with("op ") {
@@ -99,7 +96,7 @@ fn generate_module_glossary(
     if let Some(sub_modules) = &metadata.modules {
         for (sub_module, value) in sub_modules {
             mg.content.push_str(&{
-                let mg = generate_module_glossary(
+                let mg = generate_child_module_glossary(
                     engine,
                     options,
                     Some(format!("{}/{}", namespace, sub_module)),

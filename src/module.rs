@@ -9,6 +9,8 @@ use crate::{fmt_doc_comments, remove_test_code};
 use self::error::AutodocsError;
 use self::options::Options;
 
+pub use self::options::options;
+
 #[derive(Debug)]
 /// Rhai module documentation in markdown format.
 pub struct ModuleDocumentation {
@@ -173,7 +175,7 @@ import TabItem from '@theme/TabItem';
     Ok(md)
 }
 
-fn group_functions<'re, 'meta>(
+pub(crate) fn group_functions<'re, 'meta>(
     options: &Options,
     namespace: &str,
     functions: &'meta Vec<FunctionMetadata>,

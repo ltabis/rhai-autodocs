@@ -51,11 +51,11 @@ fn main() {
     engine.register_static_module("my_module", exported_module!(my_module).into());
 
     // register custom functions and types ...
-    let docs = rhai_autodocs::options()
+    let docs = rhai_autodocs::module::options()
         .include_standard_packages(false)
-        .order_functions_with(rhai_autodocs::options::FunctionOrder::ByIndex)
-        .format_sections_with(rhai_autodocs::options::SectionFormat::Tabs)
-        .for_markdown_processor(rhai_autodocs::options::MarkdownProcessor::Docusaurus)
+        .order_functions_with(rhai_autodocs::module::options::FunctionOrder::ByIndex)
+        .format_sections_with(rhai_autodocs::module::options::SectionFormat::Tabs)
+        .for_markdown_processor(rhai_autodocs::module::options::MarkdownProcessor::Docusaurus)
         .generate(&engine)
         .expect("failed to generate documentation");
 

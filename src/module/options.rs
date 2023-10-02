@@ -1,7 +1,9 @@
 use crate::{
      function::FunctionMetadata,
-    module::ModuleDocumentation,
+    module::ModuleDocumentation, glossary::{ModuleGlossary, generate_module_glossary},
 };
+
+use super::{error::AutodocsError, generate_module_documentation};
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
@@ -86,7 +88,13 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
-        generate_documentation_with_glossary(engine, self)
+Ok((
+
+    generate_module_documentation(engine, &self)?,
+    generate_module_glossary(engine, self)?
+
+))
+
     }
 }
 
