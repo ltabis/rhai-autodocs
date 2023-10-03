@@ -65,7 +65,7 @@ pub fn generate_module_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation_inner(engine, &options, None, "global", &metadata)
+    generate_module_documentation_inner(engine, options, None, "global", &metadata)
 }
 
 fn generate_module_documentation_inner(
@@ -175,10 +175,10 @@ import TabItem from '@theme/TabItem';
     Ok(md)
 }
 
-pub(crate) fn group_functions<'re, 'meta>(
+pub(crate) fn group_functions<'meta>(
     options: &Options,
     namespace: &str,
-    functions: &'meta Vec<FunctionMetadata>,
+    functions: &'meta [FunctionMetadata],
 ) -> Result<Vec<(String, Vec<&'meta FunctionMetadata>)>, AutodocsError> {
     let mut function_groups =
         std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
@@ -200,7 +200,7 @@ pub(crate) fn group_functions<'re, 'meta>(
 
     let fn_groups = options
         .functions_order
-        .order_function_groups(&namespace, function_groups)?;
+        .order_function_groups(namespace, function_groups)?;
 
     Ok(fn_groups)
 }

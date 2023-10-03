@@ -90,7 +90,7 @@ impl Options {
     pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
 Ok((
 
-    generate_module_documentation(engine, &self)?,
+    generate_module_documentation(engine, self)?,
     generate_module_glossary(engine, self)?
 
 ))

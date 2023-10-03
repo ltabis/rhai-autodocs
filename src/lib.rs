@@ -4,7 +4,11 @@ pub mod function;
 pub mod glossary;
 pub mod module;
 
-pub use module::ModuleDocumentation;
+pub use glossary::ModuleGlossary;
+pub use module::{
+    options::{options, FunctionOrder, MarkdownProcessor, SectionFormat},
+    ModuleDocumentation,
+};
 
 /// NOTE: mdbook handles this automatically, but other
 ///       markdown processors might not.
