@@ -40,6 +40,10 @@ fn generate_child_module_glossary(
     name: impl Into<String>,
     metadata: &ModuleMetadata,
 ) -> Result<ModuleGlossary, AutodocsError> {
+    fn make_highlight(color: &str, item_type: &str, definition: &str) -> String {
+        format!("- <Highlight color=\"{color}\">{item_type}</Highlight> <code>{{\"{definition}\"}}</code>\n",)
+    }
+
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
 
@@ -50,37 +54,45 @@ fn generate_child_module_glossary(
         for (_, polymorphisms) in fn_groups {
             for fn_metadata in polymorphisms {
                 let root_definition = fn_metadata.generate_function_definition();
+
+                let serialized = root_definition.display();
                 // FIXME: this only works for docusaurus.
                 // TODO: customize colors.
-                signatures += &if root_definition.starts_with("op ") {
-                    format!(
-                        "- <Highlight color=\"#16c6f3\">op</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("op ")
+                signatures += &if serialized.starts_with("op ") {
+                    make_highlight(
+                        "#16c6f3",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("op "),
                     )
-                } else if root_definition.starts_with("get ") {
-                    format!(
-                        "- <Highlight color=\"#25c2a0\">get</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("get ")
+                } else if serialized.starts_with("get ") {
+                    make_highlight(
+                        "#25c2a0",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("get "),
                     )
-                } else if root_definition.starts_with("set ") {
-                    format!(
-                        "- <Highlight color=\"#25c2a0\">set</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("set ")
+                } else if serialized.starts_with("set ") {
+                    make_highlight(
+                        "#25c2a0",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("set "),
                     )
-                } else if root_definition.starts_with("index get ") {
-                    format!(
-                        "- <Highlight color=\"#25c2a0\">get</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("index get ")
+                } else if serialized.starts_with("index get ") {
+                    make_highlight(
+                        "#25c2a0",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("index get "),
                     )
-                } else if root_definition.starts_with("index set ") {
-                    format!(
-                        "- <Highlight color=\"#25c2a0\">set</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("index set ")
+                } else if serialized.starts_with("index set ") {
+                    make_highlight(
+                        "#25c2a0",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("index set "),
                     )
                 } else {
-                    format!(
-                        "- <Highlight color=\"#C6cacb\">fn</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("fn ")
+                    make_highlight(
+                        "#C6cacb",
+                        root_definition.type_to_str(),
+                        serialized.trim_start_matches("fn "),
                     )
                 };
             }

@@ -54,15 +54,11 @@ impl FunctionMetadata {
 
     /// Generate a pseudo-Rust definition of a rhai function.
     /// e.g. `fn my_func(a: int) -> ()`
-    pub fn generate_function_definition(&self) -> String {
-        // Add getter and setter prefix + the name of the function.
-        let definition = Definition::new(&self.name, self.params.as_ref().unwrap_or(&vec![]));
-
-        definition.display(
+    pub fn generate_function_definition(&self) -> Definition {
+        Definition::new(
             &self.name,
-            self.return_type
-                .as_deref()
-                .and_then(|ty| def_type_name(ty).map(|s| s.to_string())),
+            self.params.as_ref().unwrap_or(&vec![]),
+            self.return_type.clone(),
         )
     }
 }
@@ -86,7 +82,7 @@ fn is_operator(name: &str) -> bool {
 ///
 /// Associated generic types are also rewritten into regular generic type parameters.
 /// """
-fn def_type_name(ty: &str) -> Option<std::borrow::Cow<'_, str>> {
+fn def_type_name(ty: &str) -> Option<String> {
     let ty = ty.strip_prefix("&mut").unwrap_or(ty).trim();
     let ty = remove_result(ty);
     // Removes namespaces for the type.
@@ -111,7 +107,7 @@ fn def_type_name(ty: &str) -> Option<std::borrow::Cow<'_, str>> {
     if ty == "()" {
         None
     } else {
-        Some(ty.into())
+        Some(ty)
     }
 }
 
@@ -137,7 +133,7 @@ fn remove_result(ty: &str) -> &str {
     .map_or(ty, str::trim)
 }
 
-struct Arg {
+pub struct Arg {
     name: String,
     ty: String,
 }
@@ -157,17 +153,46 @@ impl Display for Arg {
     }
 }
 
-enum Definition {
-    Function { args: Vec<Arg> },
-    Operator { arg1: Arg, arg2: Arg },
-    Get { target: Arg, index: Arg },
-    Set { target: Arg, index: Arg, value: Arg },
-    IndexGet { target: Arg, index: Arg },
-    IndexSet { target: Arg, index: Arg, value: Arg },
+pub enum Definition {
+    Function {
+        name: String,
+        args: Vec<Arg>,
+        return_type: Option<String>,
+    },
+    Operator {
+        name: String,
+        arg1: Arg,
+        arg2: Arg,
+        return_type: Option<String>,
+    },
+    Get {
+        target: Arg,
+        index: Arg,
+        return_type: Option<String>,
+    },
+    Set {
+        target: Arg,
+        index: Arg,
+        value: Arg,
+    },
+    IndexGet {
+        target: Arg,
+        index: Arg,
+        return_type: Option<String>,
+    },
+    IndexSet {
+        target: Arg,
+        index: Arg,
+        value: Arg,
+    },
 }
 
 impl Definition {
-    fn new(name: &str, args: &[std::collections::HashMap<String, String>]) -> Self {
+    pub fn new(
+        name: &str,
+        args: &[std::collections::HashMap<String, String>],
+        return_type: Option<String>,
+    ) -> Self {
         fn get_arg(args: &[std::collections::HashMap<String, String>], index: usize) -> Arg {
             args.get(index).map_or(Arg::unknown(), |def| Arg {
                 name: def
@@ -177,17 +202,20 @@ impl Definition {
                     .to_string(),
                 ty: def
                     .get("type")
-                    .map_or(std::borrow::Cow::Borrowed("?"), |ty| {
-                        def_type_name(ty).unwrap_or("?".into())
-                    })
+                    .and_then(|ty| def_type_name(ty))
+                    .unwrap_or("?".to_string())
                     .to_string(),
             })
         }
 
+        let return_type = return_type.as_deref().and_then(def_type_name);
+
         if is_operator(name) {
             Self::Operator {
+                name: name.to_string(),
                 arg1: get_arg(args, 0),
                 arg2: get_arg(args, 1),
+                return_type,
             }
         } else if let Some(name) = name.strip_prefix("get$") {
             Self::Get {
@@ -196,6 +224,7 @@ impl Definition {
                     name: name.to_string(),
                     ty: "_".to_string(),
                 },
+                return_type,
             }
         } else if let Some(name) = name.strip_prefix("set$") {
             Self::Set {
@@ -210,6 +239,7 @@ impl Definition {
             Self::IndexGet {
                 target: get_arg(args, 0),
                 index: get_arg(args, 1),
+                return_type,
             }
         } else if name.strip_prefix("index$set$").is_some() {
             Self::IndexSet {
@@ -219,18 +249,24 @@ impl Definition {
             }
         } else {
             Self::Function {
+                name: name.to_string(),
                 args: args
                     .iter()
                     .enumerate()
                     .map(|(index, _)| get_arg(args, index))
                     .collect::<Vec<Arg>>(),
+                return_type,
             }
         }
     }
 
-    fn display(&self, name: &str, return_type: Option<String>) -> String {
+    pub fn display(&self) -> String {
         match self {
-            Definition::Function { args } => {
+            Self::Function {
+                name,
+                args,
+                return_type,
+            } => {
                 format!(
                     "fn {}({})",
                     name,
@@ -239,39 +275,79 @@ impl Definition {
                         .collect::<Vec<String>>()
                         .join(", ")
                 ) + return_type
+                    .as_ref()
                     .map_or(String::default(), |rt| format!(" -> {rt}"))
                     .as_str()
             }
-            Definition::Operator { arg1, arg2 } => {
+            Self::Operator {
+                name,
+                arg1,
+                arg2,
+                return_type,
+            } => {
                 format!("op {} {} {}", arg1.ty, name, arg2.ty)
                     + return_type
+                        .as_ref()
                         .map_or(")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
-            Definition::Get { target, index } => {
+            Self::Get {
+                target,
+                index,
+                return_type,
+            } => {
                 format!("get {}.{}", target.ty, index.name)
                     + return_type
+                        .as_ref()
                         .map_or(")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
-            Definition::Set {
+            Self::Set {
                 target,
                 index,
                 value,
             } => {
                 format!("set {}.{} = {}", target.ty, index.name, value.ty)
             }
-            Definition::IndexGet { target, index } => {
+            Self::IndexGet {
+                target,
+                index,
+                return_type,
+            } => {
                 format!("index get {}[{}]", target.ty, index)
                     + return_type
+                        .as_ref()
                         .map_or(")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
-            Definition::IndexSet {
+            Self::IndexSet {
                 target,
                 index,
                 value,
             } => format!("index set {}[{}] = {}", target.ty, index, value.ty),
+        }
+    }
+
+    /// Return the function type of the definition as a string.
+    pub fn type_to_str(&self) -> &'static str {
+        match self {
+            Self::Function { .. } => "fn",
+            Self::Operator { .. } => "op",
+            Self::Get { .. } => "get",
+            Self::Set { .. } => "set",
+            Self::IndexGet { .. } => "index get",
+            Self::IndexSet { .. } => "index set",
+        }
+    }
+
+    /// Get the name of the definition if stored.
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Function { name, .. } | Self::Operator { name, .. } => name,
+            Self::Get { index, .. }
+            | Self::Set { index, .. }
+            | Self::IndexGet { index, .. }
+            | Self::IndexSet { index, .. } => &index.name,
         }
     }
 }

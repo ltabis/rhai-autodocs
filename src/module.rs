@@ -232,23 +232,11 @@ fn generate_function_documentation(
 </br>
 "#,
                     // Add a specific prefix for the function type documented.
-                    if root_definition.starts_with("op") {
-                        "op"
-                    } else if root_definition.starts_with("get")
-                        || root_definition.starts_with("index get")
-                    {
-                        "get"
-                    } else if root_definition.starts_with("set")
-                        || root_definition.starts_with("index set")
-                    {
-                        "set"
-                    } else {
-                        "fn"
-                    },
-                    name,
+                    root_definition.type_to_str(),
+                    root_definition.name(),
                     polymorphisms
                         .iter()
-                        .map(|metadata| metadata.generate_function_definition())
+                        .map(|metadata| metadata.generate_function_definition().display())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     &metadata
@@ -265,23 +253,11 @@ fn generate_function_documentation(
 {}
 "#,
                     // Add a specific prefix for the function type documented.
-                    if root_definition.starts_with("op") {
-                        "op"
-                    } else if root_definition.starts_with("get")
-                        || root_definition.starts_with("index get")
-                    {
-                        "get"
-                    } else if root_definition.starts_with("set")
-                        || root_definition.starts_with("index set")
-                    {
-                        "set"
-                    } else {
-                        "fn"
-                    },
-                    name,
+                    root_definition.type_to_str(),
+                    root_definition.name(),
                     polymorphisms
                         .iter()
-                        .map(|metadata| metadata.generate_function_definition())
+                        .map(|metadata| metadata.generate_function_definition().display())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     &metadata
