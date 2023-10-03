@@ -1,7 +1,9 @@
 use crate::{
-    error::AutodocsError, function::FunctionMetadata, generate_documentation,
-    module::ModuleDocumentation,
+     function::FunctionMetadata,
+    module::ModuleDocumentation, glossary::{ModuleGlossary, generate_module_glossary},
 };
+
+use super::{error::AutodocsError, generate_module_documentation};
 
 pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
@@ -73,7 +75,26 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
-        generate_documentation(engine, self)
+        generate_module_documentation(engine, &self)
+    }
+
+    /// Generate documentation based on an engine instance and a list of all functions signature.
+    /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
+    ///
+    /// # Result
+    /// * A vector of documented modules and the glossary.
+    ///
+    /// # Errors
+    /// * Failed to generate function metadata as json.
+    /// * Failed to parse module metadata.
+    pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+Ok((
+
+    generate_module_documentation(engine, self)?,
+    generate_module_glossary(engine, self)?
+
+))
+
     }
 }
 
@@ -114,6 +135,7 @@ pub enum FunctionOrder {
 }
 
 impl FunctionOrder {
+    /// Order functions following the [`FunctionOrder`] option.
     pub(crate) fn order_function_groups<'a>(
         &'_ self,
         module_namespace: &str,
@@ -189,7 +211,7 @@ impl SectionFormat {
         docs: String,
     ) -> String {
         match self {
-            crate::SectionFormat::Rust => format!(
+            SectionFormat::Rust => format!(
                 r#"
 <details>
 <summary markdown="span"> details </summary>
@@ -198,7 +220,7 @@ impl SectionFormat {
 </details>
 "#
             ),
-            crate::SectionFormat::Tabs => {
+            SectionFormat::Tabs => {
                 match markdown_processor {
                     MarkdownProcessor::MdBook => {
                         let mut sections = vec![];
