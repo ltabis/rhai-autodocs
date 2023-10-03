@@ -31,11 +31,10 @@ pub fn generate_module_glossary(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_child_module_glossary(engine, options, None, "global", &metadata)
+    generate_child_module_glossary(options, None, "global", &metadata)
 }
 
 fn generate_child_module_glossary(
-    engine: &rhai::Engine,
     options: &Options,
     namespace: Option<String>,
     name: impl Into<String>,
@@ -50,7 +49,7 @@ fn generate_child_module_glossary(
 
         for (_, polymorphisms) in fn_groups {
             for fn_metadata in polymorphisms {
-                let root_definition = fn_metadata.generate_function_definition(engine);
+                let root_definition = fn_metadata.generate_function_definition();
                 // FIXME: this only works for docusaurus.
                 // TODO: customize colors.
                 signatures += &if root_definition.starts_with("op ") {
@@ -58,15 +57,25 @@ fn generate_child_module_glossary(
                         "- <Highlight color=\"#16c6f3\">op</Highlight> <code>{{\"{}\"}}</code>\n",
                         root_definition.trim_start_matches("op ")
                     )
-                } else if root_definition.starts_with("fn get ") {
+                } else if root_definition.starts_with("get ") {
                     format!(
                         "- <Highlight color=\"#25c2a0\">get</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("fn get ")
+                        root_definition.trim_start_matches("get ")
                     )
-                } else if root_definition.starts_with("fn set ") {
+                } else if root_definition.starts_with("set ") {
                     format!(
                         "- <Highlight color=\"#25c2a0\">set</Highlight> <code>{{\"{}\"}}</code>\n",
-                        root_definition.trim_start_matches("fn set ")
+                        root_definition.trim_start_matches("set ")
+                    )
+                } else if root_definition.starts_with("index get ") {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">get</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("index get ")
+                    )
+                } else if root_definition.starts_with("index set ") {
+                    format!(
+                        "- <Highlight color=\"#25c2a0\">set</Highlight> <code>{{\"{}\"}}</code>\n",
+                        root_definition.trim_start_matches("index set ")
                     )
                 } else {
                     format!(
@@ -101,7 +110,6 @@ fn generate_child_module_glossary(
         for (sub_module, value) in sub_modules {
             mg.content.push_str(&{
                 let mg = generate_child_module_glossary(
-                    engine,
                     options,
                     Some(format!("{}/{}", namespace, sub_module)),
                     sub_module,

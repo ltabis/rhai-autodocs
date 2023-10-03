@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -52,62 +54,16 @@ impl FunctionMetadata {
 
     /// Generate a pseudo-Rust definition of a rhai function.
     /// e.g. `fn my_func(a: int) -> ()`
-    pub fn generate_function_definition(&self, engine: &rhai::Engine) -> String {
-        // Add the operator / function prefix.
-        let mut definition = if is_operator(&self.name) {
-            String::from("op ")
-        } else {
-            String::from("fn ")
-        };
-
+    pub fn generate_function_definition(&self) -> String {
         // Add getter and setter prefix + the name of the function.
-        if let Some(name) = self.name.strip_prefix("get$") {
-            definition += &format!("get {name}(");
-        } else if let Some(name) = self.name.strip_prefix("set$") {
-            definition += &format!("set {name}(");
-        } else {
-            definition += &format!("{}(", self.name);
-        }
+        let definition = Definition::new(&self.name, self.params.as_ref().unwrap_or(&vec![]));
 
-        let mut first = true;
-
-        // Add params with their types.
-        for i in 0..self.num_params {
-            if !first {
-                definition += ", ";
-            }
-            first = false;
-
-            let (param_name, param_type) = self
-                .params
-                .as_ref()
-                .expect("metadata.num_params does not match the number of parameters")
-                .get(i)
-                .map_or(("_", "?".into()), |s| {
-                    (
-                        s.get("name").map(|s| s.as_str()).unwrap_or("_"),
-                        s.get("type").map_or(std::borrow::Cow::Borrowed("?"), |ty| {
-                            def_type_name(ty, engine).unwrap_or("?".into())
-                        }),
-                    )
-                });
-
-            definition += &format!("{param_name}: {param_type}");
-        }
-
-        // Add an eventual return type.
-        dbg!(&definition);
-        dbg!(&self.return_type);
-        definition
-            + self
-                .return_type
+        definition.display(
+            &self.name,
+            self.return_type
                 .as_deref()
-                .map(|return_type| match def_type_name(return_type, engine) {
-                    Some(t) => format!(") -> {t}"),
-                    None => ")".to_string(),
-                })
-                .unwrap_or(")".to_string())
-                .as_str()
+                .and_then(|ty| def_type_name(ty).map(|s| s.to_string())),
+        )
     }
 }
 
@@ -130,7 +86,7 @@ fn is_operator(name: &str) -> bool {
 ///
 /// Associated generic types are also rewritten into regular generic type parameters.
 /// """
-fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> Option<std::borrow::Cow<'a, str>> {
+fn def_type_name(ty: &str) -> Option<std::borrow::Cow<'_, str>> {
     let ty = ty.strip_prefix("&mut").unwrap_or(ty).trim();
     let ty = remove_result(ty);
     // Removes namespaces for the type.
@@ -179,6 +135,145 @@ fn remove_result(ty: &str) -> &str {
         None
     }
     .map_or(ty, str::trim)
+}
+
+struct Arg {
+    name: String,
+    ty: String,
+}
+
+impl Arg {
+    fn unknown() -> Self {
+        Self {
+            name: "_".to_string(),
+            ty: "?".into(),
+        }
+    }
+}
+
+impl Display for Arg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.name, self.ty)
+    }
+}
+
+enum Definition {
+    Function { args: Vec<Arg> },
+    Operator { arg1: Arg, arg2: Arg },
+    Get { target: Arg, index: Arg },
+    Set { target: Arg, index: Arg, value: Arg },
+    IndexGet { target: Arg, index: Arg },
+    IndexSet { target: Arg, index: Arg, value: Arg },
+}
+
+impl Definition {
+    fn new(name: &str, args: &[std::collections::HashMap<String, String>]) -> Self {
+        fn get_arg(args: &[std::collections::HashMap<String, String>], index: usize) -> Arg {
+            args.get(index).map_or(Arg::unknown(), |def| Arg {
+                name: def
+                    .get("name")
+                    .map(|n| n.as_str())
+                    .unwrap_or("_")
+                    .to_string(),
+                ty: def
+                    .get("type")
+                    .map_or(std::borrow::Cow::Borrowed("?"), |ty| {
+                        def_type_name(ty).unwrap_or("?".into())
+                    })
+                    .to_string(),
+            })
+        }
+
+        if is_operator(name) {
+            Self::Operator {
+                arg1: get_arg(args, 0),
+                arg2: get_arg(args, 1),
+            }
+        } else if let Some(name) = name.strip_prefix("get$") {
+            Self::Get {
+                target: get_arg(args, 0),
+                index: Arg {
+                    name: name.to_string(),
+                    ty: "_".to_string(),
+                },
+            }
+        } else if let Some(name) = name.strip_prefix("set$") {
+            Self::Set {
+                target: get_arg(args, 0),
+                index: Arg {
+                    name: name.to_string(),
+                    ty: "_".to_string(),
+                },
+                value: get_arg(args, 1),
+            }
+        } else if name.strip_prefix("index$get$").is_some() {
+            Self::IndexGet {
+                target: get_arg(args, 0),
+                index: get_arg(args, 1),
+            }
+        } else if name.strip_prefix("index$set$").is_some() {
+            Self::IndexSet {
+                target: get_arg(args, 0),
+                index: get_arg(args, 1),
+                value: get_arg(args, 2),
+            }
+        } else {
+            Self::Function {
+                args: args
+                    .iter()
+                    .enumerate()
+                    .map(|(index, _)| get_arg(args, index))
+                    .collect::<Vec<Arg>>(),
+            }
+        }
+    }
+
+    fn display(&self, name: &str, return_type: Option<String>) -> String {
+        match self {
+            Definition::Function { args } => {
+                format!(
+                    "fn {}({})",
+                    name,
+                    args.iter()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ) + return_type
+                    .map_or(String::default(), |rt| format!(" -> {rt}"))
+                    .as_str()
+            }
+            Definition::Operator { arg1, arg2 } => {
+                format!("op {} {} {}", arg1.ty, name, arg2.ty)
+                    + return_type
+                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .as_str()
+            }
+            Definition::Get { target, index } => {
+                format!("get {}.{}", target.ty, index.name)
+                    + return_type
+                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .as_str()
+            }
+            Definition::Set {
+                target,
+                index,
+                value,
+            } => {
+                format!("set {}.{} = {}", target.ty, index.name, value.ty)
+            }
+            Definition::IndexGet { target, index } => {
+                format!("index get {}[{}]", target.ty, index)
+                    + return_type
+                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .as_str()
+            }
+            Definition::IndexSet {
+                target,
+                index,
+                value,
+            } => format!("index set {}[{}] = {}", target.ty, index, value.ty),
+        }
+    }
 }
 
 #[cfg(test)]

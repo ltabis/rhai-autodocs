@@ -65,11 +65,10 @@ pub fn generate_module_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation_inner(engine, options, None, "global", &metadata)
+    generate_module_documentation_inner(options, None, "global", &metadata)
 }
 
 fn generate_module_documentation_inner(
-    engine: &rhai::Engine,
     options: &Options,
     namespace: Option<String>,
     name: impl Into<String>,
@@ -148,7 +147,6 @@ import TabItem from '@theme/TabItem';
         // ```
         for (name, polymorphisms) in fn_groups {
             if let Some(fn_doc) = generate_function_documentation(
-                engine,
                 options,
                 &name.replace("get$", "").replace("set$", ""),
                 &polymorphisms[..],
@@ -162,7 +160,6 @@ import TabItem from '@theme/TabItem';
     if let Some(sub_modules) = &metadata.modules {
         for (sub_module, value) in sub_modules {
             md.sub_modules.push(generate_module_documentation_inner(
-                engine,
                 options,
                 Some(format!("{}/{}", namespace, sub_module)),
                 sub_module,
@@ -208,7 +205,6 @@ pub(crate) fn group_functions<'meta>(
 /// Generate markdown/html documentation for a function.
 /// TODO: Add other word processors.
 fn generate_function_documentation(
-    engine: &rhai::Engine,
     options: &Options,
     name: &str,
     polymorphisms: &[&FunctionMetadata],
@@ -217,7 +213,7 @@ fn generate_function_documentation(
     let metadata = polymorphisms
         .iter()
         .find(|metadata| metadata.doc_comments.is_some())?;
-    let root_definition = metadata.generate_function_definition(engine);
+    let root_definition = metadata.generate_function_definition();
 
     // Anonymous functions are ignored.
     if !name.starts_with("anon$") {
@@ -249,7 +245,7 @@ fn generate_function_documentation(
                     name,
                     polymorphisms
                         .iter()
-                        .map(|metadata| metadata.generate_function_definition(engine))
+                        .map(|metadata| metadata.generate_function_definition())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     &metadata
@@ -278,7 +274,7 @@ fn generate_function_documentation(
                     name,
                     polymorphisms
                         .iter()
-                        .map(|metadata| metadata.generate_function_definition(engine))
+                        .map(|metadata| metadata.generate_function_definition())
                         .collect::<Vec<_>>()
                         .join("\n"),
                     &metadata
