@@ -10,6 +10,10 @@ pub struct ModuleGlossary {
 /// Generate documentation based on an engine instance and a glossary of all functions.
 /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
 ///
+/// # CAUTION
+///
+/// This only works for docusaurus at the moment.
+///
 /// # Result
 /// * A vector of documented modules.
 ///
@@ -51,7 +55,7 @@ fn generate_child_module_glossary(
                 // TODO: customize colors.
                 signatures += &if root_definition.starts_with("op ") {
                     format!(
-                        "- <Highlight color=\"#25c2a0\">op</Highlight> <code>{{\"{}\"}}</code>\n",
+                        "- <Highlight color=\"#16c6f3\">op</Highlight> <code>{{\"{}\"}}</code>\n",
                         root_definition.trim_start_matches("op ")
                     )
                 } else if root_definition.starts_with("fn get ") {
@@ -66,7 +70,7 @@ fn generate_child_module_glossary(
                     )
                 } else {
                     format!(
-                        "- <Highlight color=\"#25c2a0\">fn</Highlight> <code>{{\"{}\"}}</code>\n",
+                        "- <Highlight color=\"#C6cacb\">fn</Highlight> <code>{{\"{}\"}}</code>\n",
                         root_definition.trim_start_matches("fn ")
                     )
                 };
