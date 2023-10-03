@@ -87,7 +87,7 @@ impl FunctionMetadata {
                     (
                         s.get("name").map(|s| s.as_str()).unwrap_or("_"),
                         s.get("type").map_or(std::borrow::Cow::Borrowed("?"), |ty| {
-                            def_type_name(ty, engine)
+                            def_type_name(ty, engine).unwrap_or("?".into())
                         }),
                     )
                 });
@@ -96,12 +96,18 @@ impl FunctionMetadata {
         }
 
         // Add an eventual return type.
+        dbg!(&definition);
+        dbg!(&self.return_type);
         definition
-            + match self.return_type.as_deref() {
-                Some("()") | None => ")".to_string(),
-                Some(t) => format!(") -> {}", def_type_name(t, engine)),
-            }
-            .as_str()
+            + self
+                .return_type
+                .as_deref()
+                .map(|return_type| match def_type_name(return_type, engine) {
+                    Some(t) => format!(") -> {t}"),
+                    None => ")".to_string(),
+                })
+                .unwrap_or(")".to_string())
+                .as_str()
     }
 }
 
@@ -124,7 +130,7 @@ fn is_operator(name: &str) -> bool {
 ///
 /// Associated generic types are also rewritten into regular generic type parameters.
 /// """
-fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, str> {
+fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> Option<std::borrow::Cow<'a, str>> {
     let ty = ty.strip_prefix("&mut").unwrap_or(ty).trim();
     let ty = remove_result(ty);
     // Removes namespaces for the type.
@@ -146,7 +152,11 @@ fn def_type_name<'a>(ty: &'a str, _: &'a rhai::Engine) -> std::borrow::Cow<'a, s
     let ty = ty.replace(std::any::type_name::<rhai::Instant>(), "Instant");
     let ty = ty.replace(std::any::type_name::<rhai::FnPtr>(), "FnPtr");
 
-    ty.into()
+    if ty == "()" {
+        None
+    } else {
+        Some(ty.into())
+    }
 }
 
 /// Remove the result wrapper for a return type since it can be confusing in the documentation
