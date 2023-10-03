@@ -214,7 +214,6 @@ fn generate_function_documentation(
         .iter()
         .find(|metadata| metadata.doc_comments.is_some())?;
     let root_definition = metadata.generate_function_definition();
-
     // Anonymous functions are ignored.
     if !name.starts_with("anon$") {
         match options.markdown_processor {
@@ -235,9 +234,13 @@ fn generate_function_documentation(
                     // Add a specific prefix for the function type documented.
                     if root_definition.starts_with("op") {
                         "op"
-                    } else if root_definition.starts_with("fn get ") {
+                    } else if root_definition.starts_with("get")
+                        || root_definition.starts_with("index get")
+                    {
                         "get"
-                    } else if root_definition.starts_with("fn set ") {
+                    } else if root_definition.starts_with("set")
+                        || root_definition.starts_with("index set")
+                    {
                         "set"
                     } else {
                         "fn"
@@ -264,9 +267,13 @@ fn generate_function_documentation(
                     // Add a specific prefix for the function type documented.
                     if root_definition.starts_with("op") {
                         "op"
-                    } else if root_definition.starts_with("fn get ") {
+                    } else if root_definition.starts_with("get")
+                        || root_definition.starts_with("index get")
+                    {
                         "get"
-                    } else if root_definition.starts_with("fn set ") {
+                    } else if root_definition.starts_with("set")
+                        || root_definition.starts_with("index set")
+                    {
                         "set"
                     } else {
                         "fn"
