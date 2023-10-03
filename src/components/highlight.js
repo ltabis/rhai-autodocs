@@ -3,7 +3,7 @@ export const Highlight = ({ children, color }) => (
         style={{
             backgroundColor: color,
             borderRadius: '2px',
-            color: '#fff',
+            color: '#000',
             padding: '0.2rem',
         }}>
         {children}

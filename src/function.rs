@@ -157,6 +157,7 @@ fn remove_result(ty: &str) -> &str {
             .or_else(|| ty.strip_suffix(",Box<rhai::EvalAltResult>>"))
             .or_else(|| ty.strip_suffix(", Box<EvalAltResult>>"))
             .or_else(|| ty.strip_suffix(", Box<rhai::EvalAltResult>>"))
+            .or_else(|| ty.strip_suffix('>'))
     } else if let Some(ty) = ty.strip_prefix("EngineResult<") {
         ty.strip_suffix('>')
     } else if let Some(ty) = ty
