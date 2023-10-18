@@ -29,6 +29,7 @@ pub struct ModuleDocumentation {
 
 /// Intermediatory representation of the documentation.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ModuleMetadata {
     /// Optional documentation for the module.
     pub doc: Option<String>,
@@ -69,6 +70,8 @@ pub fn generate_module_documentation(
 
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+
+    dbg!(&metadata);
 
     generate_module_documentation_inner(options, None, "global", &metadata)
 }
@@ -123,8 +126,8 @@ import TabItem from '@theme/TabItem';
     let mut md = ModuleDocumentation {
         namespace: namespace.clone(),
         name,
-        sub_modules: vec![],
         documentation,
+        sub_modules: vec![],
         items: vec![],
     };
 

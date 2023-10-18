@@ -122,7 +122,7 @@ fn generate_child_module_glossary(
                     }
                 }
                 DocItem::CustomType { metadata, .. } => {
-                    signatures += &make_highlight("#25c2a0", "type", &metadata.display_name)
+                    signatures += &make_highlight("#C6cacb", "type", &metadata.display_name)
                 }
             }
         }

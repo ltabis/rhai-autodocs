@@ -3,5 +3,5 @@
 pub struct CustomTypesMetadata {
     pub type_name: String,
     pub display_name: String,
-    pub doc_comments: Vec<String>,
+    pub doc_comments: Option<Vec<String>>,
 }

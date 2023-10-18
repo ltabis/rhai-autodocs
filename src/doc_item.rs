@@ -126,7 +126,7 @@ impl DocItem {
             Self::find_index(
                 &metadata.display_name,
                 namespace,
-                &metadata.doc_comments[..],
+                metadata.doc_comments.as_ref().unwrap_or(&vec![]),
             )?
         } else {
             0
@@ -146,7 +146,7 @@ impl DocItem {
                     metadata.display_name,
                     Self::format_comments(
                         metadata.display_name.as_str(),
-                        &metadata.doc_comments[..],
+                        metadata.doc_comments.as_ref().unwrap_or(&vec![]),
                         options
                     )
                 )
@@ -160,7 +160,7 @@ impl DocItem {
                     metadata.display_name,
                     Self::format_comments(
                         metadata.display_name.as_str(),
-                        &metadata.doc_comments[..],
+                        metadata.doc_comments.as_ref().unwrap_or(&vec![]),
                         options
                     )
                 )
