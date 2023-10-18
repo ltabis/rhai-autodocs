@@ -1,4 +1,7 @@
-use crate::module::{error::AutodocsError, group_functions, options::Options, ModuleMetadata};
+use crate::{
+    doc_item::DocItem,
+    module::{error::AutodocsError, group_functions, options::Options, ModuleMetadata},
+};
 
 /// Glossary of all function for a module and it's submodules.
 #[derive(Debug)]
@@ -46,61 +49,85 @@ fn generate_child_module_glossary(
 
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
+    let mut items = if let Some(types) = &metadata.custom_types {
+        types
+            .iter()
+            .map(|metadata| DocItem::new_custom_type(metadata.clone(), &namespace, options))
+            .collect::<Result<Vec<_>, AutodocsError>>()?
+    } else {
+        vec![]
+    };
 
-    let signatures = if let Some(functions) = &metadata.functions {
-        let fn_groups = group_functions(options, &namespace, functions)?;
+    items.extend(if let Some(functions) = &metadata.functions {
+        let groups = group_functions(functions);
+        groups
+            .iter()
+            .map(|(name, metadata)| DocItem::new_function(metadata, name, &namespace, options))
+            .collect::<Result<Vec<_>, AutodocsError>>()?
+    } else {
+        vec![]
+    });
+
+    let items = options.items_order.order_items(items);
+
+    let signatures = {
         let mut signatures = String::default();
 
-        for (_, polymorphisms) in fn_groups {
-            for fn_metadata in polymorphisms {
-                let root_definition = fn_metadata.generate_function_definition();
+        for item in &items {
+            match item {
+                DocItem::Function { metadata, .. } => {
+                    for m in metadata {
+                        let root_definition = m.generate_function_definition();
 
-                let serialized = root_definition.display();
-                // FIXME: this only works for docusaurus.
-                // TODO: customize colors.
-                signatures += &if serialized.starts_with("op ") {
-                    make_highlight(
-                        "#16c6f3",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("op "),
-                    )
-                } else if serialized.starts_with("get ") {
-                    make_highlight(
-                        "#25c2a0",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("get "),
-                    )
-                } else if serialized.starts_with("set ") {
-                    make_highlight(
-                        "#25c2a0",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("set "),
-                    )
-                } else if serialized.starts_with("index get ") {
-                    make_highlight(
-                        "#25c2a0",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("index get "),
-                    )
-                } else if serialized.starts_with("index set ") {
-                    make_highlight(
-                        "#25c2a0",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("index set "),
-                    )
-                } else {
-                    make_highlight(
-                        "#C6cacb",
-                        root_definition.type_to_str(),
-                        serialized.trim_start_matches("fn "),
-                    )
-                };
+                        let serialized = root_definition.display();
+                        // FIXME: this only works for docusaurus.
+                        // TODO: customize colors.
+                        signatures += &if serialized.starts_with("op ") {
+                            make_highlight(
+                                "#16c6f3",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("op "),
+                            )
+                        } else if serialized.starts_with("get ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("get "),
+                            )
+                        } else if serialized.starts_with("set ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("set "),
+                            )
+                        } else if serialized.starts_with("index get ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("index get "),
+                            )
+                        } else if serialized.starts_with("index set ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("index set "),
+                            )
+                        } else {
+                            make_highlight(
+                                "#C6cacb",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("fn "),
+                            )
+                        }
+                    }
+                }
+                DocItem::CustomType { metadata, .. } => {
+                    signatures += &make_highlight("#25c2a0", "type", &metadata.display_name)
+                }
             }
         }
 
         signatures
-    } else {
-        String::default()
     };
 
     // FIXME: this only works for docusaurus.

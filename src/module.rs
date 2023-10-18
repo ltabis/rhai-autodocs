@@ -3,8 +3,9 @@ pub mod options;
 
 use serde::{Deserialize, Serialize};
 
+use crate::custom_types::CustomTypesMetadata;
+use crate::doc_item::DocItem;
 use crate::function::FunctionMetadata;
-use crate::{fmt_doc_comments, remove_test_code};
 
 use self::error::AutodocsError;
 use self::options::Options;
@@ -20,8 +21,10 @@ pub struct ModuleDocumentation {
     pub name: String,
     /// Sub modules.
     pub sub_modules: Vec<ModuleDocumentation>,
-    /// Raw text documentation in markdown.
+    /// Module documentation as raw text.
     pub documentation: String,
+    /// Documentation items found in the module.
+    pub items: Vec<DocItem>,
 }
 
 /// Intermediatory representation of the documentation.
@@ -31,6 +34,8 @@ pub(crate) struct ModuleMetadata {
     pub doc: Option<String>,
     /// Functions metadata, if any.
     pub functions: Option<Vec<FunctionMetadata>>,
+    /// Custom types metadata, if any.
+    pub custom_types: Option<Vec<CustomTypesMetadata>>,
     /// Sub-modules, if any, stored as raw json values.
     pub modules: Option<serde_json::Map<String, serde_json::Value>>,
 }
@@ -41,7 +46,7 @@ impl ModuleMetadata {
     pub fn fmt_doc_comments(&self) -> Option<String> {
         self.doc
             .clone()
-            .map(|dc| remove_test_code(&fmt_doc_comments(dc)))
+            .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
     }
 }
 
@@ -120,40 +125,34 @@ import TabItem from '@theme/TabItem';
         name,
         sub_modules: vec![],
         documentation,
+        items: vec![],
     };
 
-    if let Some(functions) = &metadata.functions {
-        let fn_groups = group_functions(options, &namespace, functions)?;
+    let mut items = vec![];
 
-        // Generate a clean documentation for each functions.
-        // Functions that share the same name will keep only
-        // one documentation, the others will be dropped.
-        //
-        // This means that:
-        // ```rust
-        // /// doc 1
-        // fn my_func(a: int)`
-        // ```
-        // and
-        // ```rust
-        // /// doc 2
-        // fn my_func(a: int, b: int)`
-        // ```
-        // will be written as the following:
-        // ```rust
-        // /// doc 1
-        // fn my_func(a: int);
-        // fn my_func(a: int, b: int);
-        // ```
-        for (name, polymorphisms) in fn_groups {
-            if let Some(fn_doc) = generate_function_documentation(
-                options,
-                &name.replace("get$", "").replace("set$", ""),
+    if let Some(types) = &metadata.custom_types {
+        for ty in types {
+            items.push(DocItem::new_custom_type(ty.clone(), &namespace, options)?);
+        }
+    }
+
+    if let Some(functions) = &metadata.functions {
+        for (name, polymorphisms) in group_functions(functions) {
+            if let Ok(doc_item) = DocItem::new_function(
                 &polymorphisms[..],
+                name.replace("get$", "").replace("set$", "").as_str(),
+                &namespace,
+                options,
             ) {
-                md.documentation += &fn_doc;
+                items.push(doc_item);
             }
         }
+    }
+
+    md.items = options.items_order.order_items(items);
+
+    for items in &md.items {
+        md.documentation += items.docs();
     }
 
     // Generate documentation for each submodule. (if any)
@@ -172,109 +171,29 @@ import TabItem from '@theme/TabItem';
     Ok(md)
 }
 
-pub(crate) fn group_functions<'meta>(
-    options: &Options,
-    namespace: &str,
-    functions: &'meta [FunctionMetadata],
-) -> Result<Vec<(String, Vec<&'meta FunctionMetadata>)>, AutodocsError> {
-    let mut function_groups =
-        std::collections::HashMap::<String, Vec<&FunctionMetadata>>::default();
+pub(crate) fn group_functions(
+    functions: &[FunctionMetadata],
+) -> std::collections::HashMap<String, Vec<FunctionMetadata>> {
+    let mut function_groups = std::collections::HashMap::<String, Vec<FunctionMetadata>>::default();
 
     // Rhai function can be polymorphes, so we group them by name.
     functions.iter().for_each(|metadata| {
         match function_groups.get_mut(&metadata.name) {
-            Some(polymorphisms) => polymorphisms.push(metadata),
+            Some(polymorphisms) => polymorphisms.push(metadata.clone()),
             None => {
-                function_groups.insert(metadata.name.clone(), vec![metadata]);
+                function_groups.insert(metadata.name.clone(), vec![metadata.clone()]);
             }
         };
     });
 
-    let function_groups = function_groups
-        .into_iter()
-        .map(|(name, polymorphisms)| (name, polymorphisms))
-        .collect::<Vec<_>>();
-
-    let fn_groups = options
-        .functions_order
-        .order_function_groups(namespace, function_groups)?;
-
-    Ok(fn_groups)
-}
-
-/// Generate markdown/html documentation for a function.
-/// TODO: Add other word processors.
-fn generate_function_documentation(
-    options: &Options,
-    name: &str,
-    polymorphisms: &[&FunctionMetadata],
-) -> Option<String> {
-    // Takes the first valid comments found for a function group.
-    let metadata = polymorphisms
-        .iter()
-        .find(|metadata| metadata.doc_comments.is_some())?;
-    let root_definition = metadata.generate_function_definition();
-    // Anonymous functions are ignored.
-    if !name.starts_with("anon$") {
-        match options.markdown_processor {
-            options::MarkdownProcessor::MdBook => {
-                Some(format!(
-                    r#"
-<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
-
-<h2 class="func-name"> <code>{}</code> {} </h2>
-
-```rust,ignore
-{}
-```
-{}
-</div>
-</br>
-"#,
-                    // Add a specific prefix for the function type documented.
-                    root_definition.type_to_str(),
-                    root_definition.name(),
-                    polymorphisms
-                        .iter()
-                        .map(|metadata| metadata.generate_function_definition().display())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    &metadata
-                        .fmt_doc_comments(&options.sections_format, &options.markdown_processor)
-                        .unwrap_or_default()
-                ))
-            }
-            options::MarkdownProcessor::Docusaurus => {
-                Some(format!(
-                    r#"## <code>{}</code> {}
-```js
-{}
-```
-{}
-"#,
-                    // Add a specific prefix for the function type documented.
-                    root_definition.type_to_str(),
-                    root_definition.name(),
-                    polymorphisms
-                        .iter()
-                        .map(|metadata| metadata.generate_function_definition().display())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    &metadata
-                        .fmt_doc_comments(&options.sections_format, &options.markdown_processor)
-                        .unwrap_or_default()
-                ))
-            }
-        }
-    } else {
-        None
-    }
+    function_groups
 }
 
 #[cfg(test)]
 mod test {
+    use crate::module::options::ItemsOrder;
+
     use super::*;
-    use crate::module::options::FunctionOrder;
     use rhai::plugin::*;
 
     /// My own module.
@@ -306,7 +225,7 @@ mod test {
         // register custom functions and types ...
         let docs = options::options()
             .include_standard_packages(false)
-            .order_functions_with(FunctionOrder::ByIndex)
+            .order_items_with(ItemsOrder::ByIndex)
             .for_markdown_processor(options::MarkdownProcessor::MdBook)
             .generate(&engine)
             .expect("failed to generate documentation");
