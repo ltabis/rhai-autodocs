@@ -6,7 +6,7 @@ use crate::{
 /// Glossary of all function for a module and it's submodules.
 #[derive(Debug)]
 pub struct ModuleGlossary {
-    /// Formated function signatures by submodules.
+    /// Formatted function signatures by submodules.
     pub content: String,
 }
 
@@ -34,10 +34,10 @@ pub fn generate_module_glossary(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_child_module_glossary(options, None, "global", &metadata)
+    generate_module_glossary_inner(options, None, "global", &metadata)
 }
 
-fn generate_child_module_glossary(
+fn generate_module_glossary_inner(
     options: &Options,
     namespace: Option<String>,
     name: impl Into<String>,
@@ -148,7 +148,7 @@ fn generate_child_module_glossary(
     if let Some(sub_modules) = &metadata.modules {
         for (sub_module, value) in sub_modules {
             mg.content.push_str(&{
-                let mg = generate_child_module_glossary(
+                let mg = generate_module_glossary_inner(
                     options,
                     Some(format!("{}/{}", namespace, sub_module)),
                     sub_module,
