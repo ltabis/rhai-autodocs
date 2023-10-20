@@ -71,8 +71,6 @@ pub fn generate_module_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    dbg!(&metadata);
-
     generate_module_documentation_inner(options, None, "global", &metadata)
 }
 
