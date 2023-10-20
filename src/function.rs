@@ -2,15 +2,9 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    fmt_doc_comments,
-    module::options::{MarkdownProcessor, SectionFormat, RHAI_FUNCTION_INDEX_PATTERN},
-    remove_test_code,
-};
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct FunctionMetadata {
+pub struct FunctionMetadata {
     pub access: String,
     pub base_hash: u128,
     pub full_hash: u128,
@@ -23,35 +17,7 @@ pub(crate) struct FunctionMetadata {
     pub doc_comments: Option<Vec<String>>,
 }
 
-/// Remove crate specific comments, like `rhai-autodocs:index`.
-fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
-    dc.into_iter()
-        .map(|s| {
-            s.lines()
-                .filter(|l| !l.contains(RHAI_FUNCTION_INDEX_PATTERN))
-                .collect::<Vec<_>>()
-                .join("\n")
-        })
-        .collect::<Vec<_>>()
-}
-
 impl FunctionMetadata {
-    /// Format the function doc comments to make them
-    /// into readable markdown.
-    pub fn fmt_doc_comments(
-        &self,
-        section_format: &SectionFormat,
-        markdown_processor: &MarkdownProcessor,
-    ) -> Option<String> {
-        self.doc_comments.clone().map(|dc| {
-            let removed_extra_tokens = remove_extra_tokens(dc).join("\n");
-            let remove_comments = fmt_doc_comments(removed_extra_tokens);
-            let remove_test_code = remove_test_code(&remove_comments);
-
-            section_format.fmt_sections(&self.name, markdown_processor, remove_test_code)
-        })
-    }
-
     /// Generate a pseudo-Rust definition of a rhai function.
     /// e.g. `fn my_func(a: int) -> ()`
     pub fn generate_function_definition(&self) -> Definition {

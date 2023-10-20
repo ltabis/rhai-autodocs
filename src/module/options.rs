@@ -1,11 +1,10 @@
 use crate::{
-     function::FunctionMetadata,
-    module::ModuleDocumentation, glossary::{ModuleGlossary, generate_module_glossary},
+    module::ModuleDocumentation, glossary::{ModuleGlossary, generate_module_glossary}, doc_item::DocItem,
 };
 
 use super::{error::AutodocsError, generate_module_documentation};
 
-pub const RHAI_FUNCTION_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
+pub const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
 /// Types of markdown processor where the documentation generated will be hosted.
 #[derive(Default)]
@@ -20,7 +19,7 @@ pub enum MarkdownProcessor {
 #[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
-    pub(crate) functions_order: FunctionOrder,
+    pub(crate) items_order: ItemsOrder,
     pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
     pub(crate) markdown_processor: MarkdownProcessor,
@@ -40,10 +39,10 @@ impl Options {
         self
     }
 
-    /// Order functions in a specific way.
-    /// See [`FunctionOrder`] for more details.
-    pub fn order_functions_with(mut self, functions_order: FunctionOrder) -> Self {
-        self.functions_order = functions_order;
+    /// Order documentation items in a specific way.
+    /// See [`ItemsOrder`] for more details.
+    pub fn order_items_with(mut self, items_order: ItemsOrder) -> Self {
+        self.items_order = items_order;
 
         self
     }
@@ -88,19 +87,16 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
-Ok((
-
-    generate_module_documentation(engine, self)?,
-    generate_module_glossary(engine, self)?
-
-))
-
+        Ok((
+            generate_module_documentation(engine, self)?,
+            generate_module_glossary(engine, self)?
+        ))
     }
 }
 
+/// Select in which order each doc item will be displayed.
 #[derive(Default)]
-/// Select in which order each functions will be displayed.
-pub enum FunctionOrder {
+pub enum ItemsOrder {
     /// Display functions by alphabetical order.
     #[default]
     Alphabetical,
@@ -134,53 +130,20 @@ pub enum FunctionOrder {
     ByIndex,
 }
 
-impl FunctionOrder {
-    /// Order functions following the [`FunctionOrder`] option.
-    pub(crate) fn order_function_groups<'a>(
+impl ItemsOrder {
+    /// Order [`DocItem`]s following the given option.
+    pub(crate) fn order_items(
         &'_ self,
-        module_namespace: &str,
-        mut function_groups: Vec<(String, Vec<&'a FunctionMetadata>)>,
-    ) -> Result<Vec<(String, Vec<&'a FunctionMetadata>)>, AutodocsError> {
+        mut items: Vec<DocItem>,
+    ) -> Vec<DocItem> {
         match self {
-            FunctionOrder::Alphabetical => {
-                function_groups.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-                Ok(function_groups)
+            Self::Alphabetical => {
+                items.sort_by(|i1, i2| i1.name().cmp(i2.name()));
+                items
             }
-            FunctionOrder::ByIndex => {
-                let mut ordered = function_groups.clone();
-
-                'groups: for (function, polymorphisms) in &function_groups {
-                    for comments in polymorphisms
-                        .iter()
-                        .filter_map(|item| item.doc_comments.as_ref())
-                    {
-                        if let Some((_, index)) = comments
-                            .iter()
-                            .find_map(|line| line.rsplit_once(RHAI_FUNCTION_INDEX_PATTERN))
-                        {
-                            let index = index
-                                .parse::<usize>()
-                                .map_err(|err| AutodocsError::PreProcessing(format!("failed to parsed order metadata: {err}")))?;
-
-                            if let Some(slot) = ordered.get_mut(index - 1) {
-                                *slot = (function.clone(), polymorphisms.clone());
-                            } else {
-                                return Err(AutodocsError::PreProcessing(format!(
-                                    "`# rhai-autodocs:index:?` index is out of bounds for the function `{function}`. It is probably because you set `# rhai-autodocs:index:?` for functions that are polymorphes of each other. Try to set your documentation only on one function of the group and add the `#[doc(hidden)]` pre-processor to the rest of the functions."
-                                )));
-                            }
-
-                            continue 'groups;
-                        }
-                    }
-
-                    return Err(AutodocsError::PreProcessing(format!(
-                        "missing order metadata in function {module_namespace}/{function}")
-                    ));
-                }
-
-                Ok(ordered)
+            Self::ByIndex => {
+                items.sort_by_key(DocItem::index);
+                items
             }
         }
     }
@@ -227,8 +190,8 @@ impl SectionFormat {
                         let mut tab_content = docs.lines().fold(
                             format!(
                                 r#"
-        <div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
-        "#
+<div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
+"#
                             ),
                             |mut state, line| {
                                 if let Some((_, section)) = line.split_once("# ") {
@@ -236,8 +199,8 @@ impl SectionFormat {
                                     state.push_str("\n</div>\n");
                                     state.push_str(&format!(
                                         r#"
-        <div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
-        "#
+<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
+"#
                                     ));
                                 } else {
                                     state.push_str(line);
