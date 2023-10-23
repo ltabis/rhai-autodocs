@@ -20,7 +20,7 @@ categories = ["development-tools"]
 [dependencies]
 rhai = { version = "1.16.2", features = ["metadata"] }
 serde_json = "1.0.107"
-serde = { version = "1.0.188", features = ["derive"] }
+serde = { version = "1.0.189", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
