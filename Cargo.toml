@@ -1,6 +1,6 @@
 [package]
 name = "rhai-autodocs"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 authors = ["Lucas Tabis"]
 description = "Custom documentation generator for the Rhai scripting language"
