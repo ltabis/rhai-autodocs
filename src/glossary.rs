@@ -26,6 +26,7 @@ pub struct ModuleGlossary {
 pub fn generate_module_glossary(
     engine: &rhai::Engine,
     options: &Options,
+    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleGlossary, AutodocsError> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
@@ -34,7 +35,7 @@ pub fn generate_module_glossary(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_glossary_inner(options, None, "global", &metadata)
+    generate_module_glossary_inner(options, None, "global", &metadata, hbs_registry)
 }
 
 fn generate_module_glossary_inner(
@@ -42,6 +43,7 @@ fn generate_module_glossary_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
+    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleGlossary, AutodocsError> {
     fn make_highlight(color: &str, item_type: &str, definition: &str) -> String {
         format!("- <Highlight color=\"{color}\">{item_type}</Highlight> <code>{{\"{definition}\"}}</code>\n",)
@@ -52,7 +54,9 @@ fn generate_module_glossary_inner(
     let mut items = if let Some(types) = &metadata.custom_types {
         types
             .iter()
-            .map(|metadata| DocItem::new_custom_type(metadata.clone(), &namespace, options))
+            .map(|metadata| {
+                DocItem::new_custom_type(metadata.clone(), &namespace, options, hbs_registry)
+            })
             .collect::<Result<Vec<_>, AutodocsError>>()?
     } else {
         vec![]
@@ -62,7 +66,9 @@ fn generate_module_glossary_inner(
         let groups = group_functions(functions);
         groups
             .iter()
-            .map(|(name, metadata)| DocItem::new_function(metadata, name, &namespace, options))
+            .map(|(name, metadata)| {
+                DocItem::new_function(metadata, name, &namespace, options, hbs_registry)
+            })
             .collect::<Result<Vec<_>, AutodocsError>>()?
     } else {
         vec![]
@@ -154,6 +160,7 @@ fn generate_module_glossary_inner(
                     sub_module,
                     &serde_json::from_value::<ModuleMetadata>(value.clone())
                         .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
+                    hbs_registry,
                 )?;
 
                 mg.content

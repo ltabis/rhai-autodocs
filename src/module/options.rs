@@ -1,5 +1,10 @@
+use serde_json::json;
+
 use crate::{
-    module::ModuleDocumentation, glossary::{ModuleGlossary, generate_module_glossary}, doc_item::DocItem,
+    doc_item::DocItem,
+    glossary::{generate_module_glossary, ModuleGlossary},
+    module::ModuleDocumentation,
+    templates::build_templates_registry,
 };
 
 use super::{error::AutodocsError, generate_module_documentation};
@@ -74,7 +79,8 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
-        generate_module_documentation(engine, &self)
+        let registry = build_templates_registry();
+        generate_module_documentation(engine, &self, &registry)
     }
 
     /// Generate documentation based on an engine instance and a list of all functions signature.
@@ -86,10 +92,15 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn generate_with_glossary(&self, engine: &rhai::Engine) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+    pub fn generate_with_glossary(
+        &self,
+        engine: &rhai::Engine,
+    ) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+        let registry = build_templates_registry();
+
         Ok((
-            generate_module_documentation(engine, self)?,
-            generate_module_glossary(engine, self)?
+            generate_module_documentation(engine, self, &registry)?,
+            generate_module_glossary(engine, self, &registry)?,
         ))
     }
 }
@@ -118,12 +129,12 @@ pub enum ItemsOrder {
     /// #[rhai_fn(global)]
     /// pub fn my_function2() {}
     /// ```
-    /// 
+    ///
     /// Adding, removing or re-ordering your functions from your api can be a chore
     /// because you have to update all indexes by hand. Thankfully, you will found
     /// a python script in the `scripts` folder of the `rhai-autodocs` repository
     /// that will update the indexes by hand just for you.
-    /// 
+    ///
     /// The script generates a .autodocs file from your original source file,
     /// make sure to check that it did not mess with your source code using
     /// a diff tool.
@@ -132,10 +143,7 @@ pub enum ItemsOrder {
 
 impl ItemsOrder {
     /// Order [`DocItem`]s following the given option.
-    pub(crate) fn order_items(
-        &'_ self,
-        mut items: Vec<DocItem>,
-    ) -> Vec<DocItem> {
+    pub(crate) fn order_items(&'_ self, mut items: Vec<DocItem>) -> Vec<DocItem> {
         match self {
             Self::Alphabetical => {
                 items.sort_by(|i1, i2| i1.name().cmp(i2.name()));
@@ -172,99 +180,136 @@ impl SectionFormat {
         function_name: &str,
         markdown_processor: &MarkdownProcessor,
         docs: String,
+        hbs_registry: &handlebars::Handlebars,
     ) -> String {
-        match self {
-            SectionFormat::Rust => format!(
-                r#"
-<details>
-<summary markdown="span"> details </summary>
-
-{docs}
-</details>
-"#
-            ),
+        let format = match self {
+            // TODO: replace by handlebars.
+            SectionFormat::Rust => hbs_registry
+                .render("sections-rust", &json!({ "body": docs }))
+                .unwrap(),
             SectionFormat::Tabs => {
-                match markdown_processor {
-                    MarkdownProcessor::MdBook => {
-                        let mut sections = vec![];
-                        let mut tab_content = docs.lines().fold(
-                            format!(
-                                r#"
-<div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
-"#
-                            ),
-                            |mut state, line| {
-                                if let Some((_, section)) = line.split_once("# ") {
-                                    sections.push(section);
-                                    state.push_str("\n</div>\n");
-                                    state.push_str(&format!(
-                                        r#"
-<div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
-"#
-                                    ));
-                                } else {
-                                    state.push_str(line);
-                                    state.push('\n');
-                                }
-        
-                                state
-                            },
-                        );
-        
-                        tab_content += "</div>\n";
-        
-                        sections.into_iter().fold(
-                            format!(
-                                r#"
-<div class="tab">
-    <button
-        group="{function_name}"
-        id="link-{function_name}-description"
-        class="tablinks active"
-        onclick="openTab(event, '{function_name}', 'description')">
-        Description
-    </button>"#
-                            ),
-                            |state, section| {
-                                state
-                                    + format!(
-                                        r#"
-<button
-    group="{function_name}"
-    id="link-{function_name}-{section}"
-    class="tablinks"
-    onclick="openTab(event, '{function_name}', '{section}')">
-    {section}
-</button>"#
-                                    )
-                                    .as_str()
-                            },
-                        ) + "</div>\n"
-                            + tab_content.as_str()
-                    },
+                let mut sections = vec![];
+                let mut current = Section::default();
 
-                    MarkdownProcessor::Docusaurus => {
-                        let mut content = "<Tabs>\n<TabItem value=\"Description\" default>\n".to_string();
-
-                        for line in docs.lines() {
-                            if let Some((_, section)) = line.split_once("# ") {
-                                content.push_str("</TabItem>\n\n");
-                                content.push_str(&format!("<TabItem value=\"{section}\" default>\n"));
-                            } else {
-                                content.push_str(
-                                    // Removing rust links wrapped in the '<>' characters because they
-                                    // are treated as components.
-                                    &line.replace(['<', '>'], "")
-                                );
-                                content.push('\n');
-                            }
+                // Start by extracting all sections from markdown comments.
+                docs.lines().fold(true, |first, line| {
+                    if let Some((_prefix, name)) = line.split_once("# ") {
+                        if !first {
+                            sections.push(current.clone());
                         }
 
-                        content += "\n</TabItem>\n</Tabs>\n";
-                        content
+                        current = Section {
+                            name: name.to_string(),
+                            body: String::default(),
+                        };
+                    } else {
+                        current.body.push_str(line);
+                        current.body.push('\n');
+                    }
+
+                    false
+                });
+
+                let data = json!({
+                    "function_name": function_name,
+                    "sections": sections
+                });
+
+                match markdown_processor {
+                    MarkdownProcessor::MdBook => {
+                        hbs_registry.render("mdbook-sections-tabs", &data).unwrap()
+                        //                         let mut sections = vec![];
+                        //                         let mut tab_content = docs.lines().fold(
+                        //                             format!(
+                        //                                 r#"
+                        // <div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
+                        // "#
+                        //                             ),
+                        //                             |mut state, line| {
+                        //                                 if let Some((_, section)) = line.split_once("# ") {
+                        //                                     sections.push(section);
+                        //                                     state.push_str("\n</div>\n");
+                        //                                     state.push_str(&format!(
+                        //                                         r#"
+                        // <div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
+                        // "#
+                        //                                     ));
+                        //                                 } else {
+                        //                                     state.push_str(line);
+                        //                                     state.push('\n');
+                        //                                 }
+
+                        //                                 state
+                        //                             },
+                        //                         );
+
+                        //                         tab_content += "</div>\n";
+
+                        //                         sections.into_iter().fold(
+                        //                             format!(
+                        //                                 r#"
+                        // <div class="tab">
+                        //     <button
+                        //         group="{function_name}"
+                        //         id="link-{function_name}-description"
+                        //         class="tablinks active"
+                        //         onclick="openTab(event, '{function_name}', 'description')">
+                        //         Description
+                        //     </button>"#
+                        //                             ),
+                        //                             |state, section| {
+                        //                                 state
+                        //                                     + format!(
+                        //                                         r#"
+                        // <button
+                        //     group="{function_name}"
+                        //     id="link-{function_name}-{section}"
+                        //     class="tablinks"
+                        //     onclick="openTab(event, '{function_name}', '{section}')">
+                        //     {section}
+                        // </button>"#
+                        //                                     )
+                        //                                     .as_str()
+                        //                             },
+                        //                         ) + "</div>\n"
+                        //                             + tab_content.as_str()
+                    }
+
+                    MarkdownProcessor::Docusaurus => {
+                        // let mut content =
+                        //     "<Tabs>\n<TabItem value=\"Description\" default>\n".to_string();
+
+                        // for line in docs.lines() {
+                        //     if let Some((_, section)) = line.split_once("# ") {
+                        //         content.push_str("</TabItem>\n\n");
+                        //         content
+                        //             .push_str(&format!("<TabItem value=\"{section}\" default>\n"));
+                        //     } else {
+                        //         content.push_str(
+                        //             // Removing rust links wrapped in the '<>' characters because they
+                        //             // are treated as components.
+                        //             &line.replace(['<', '>'], ""),
+                        //         );
+                        //         content.push('\n');
+                        //     }
+                        // }
+
+                        // content += "\n</TabItem>\n</Tabs>\n";
+                        // content
+                        hbs_registry
+                            .render("docusaurus-sections-tabs", &data)
+                            .unwrap()
                     }
                 }
             }
-        }
+        };
+
+        dbg!(format)
     }
+}
+
+#[derive(Default, Clone, serde::Serialize)]
+struct Section {
+    pub name: String,
+    pub body: String,
 }

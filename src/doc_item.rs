@@ -30,6 +30,7 @@ impl DocItem {
         name: &str,
         namespace: &str,
         options: &Options,
+        hbs_registry: &handlebars::Handlebars,
     ) -> Result<Self, AutodocsError> {
         // Takes the first valid comments found for a function group.
         let root = metadata
@@ -49,57 +50,39 @@ impl DocItem {
                 } else {
                     0
                 };
+
+                // Build data that needs to be injected in the fonction template.
+                let data = std::collections::BTreeMap::from([
+                    (
+                        "type".to_string(),
+                        root_definition.type_to_str().to_string(),
+                    ),
+                    ("name".to_string(), root_definition.name().to_string()),
+                    (
+                        "signatures".to_string(),
+                        metadata
+                            .iter()
+                            .map(|metadata| metadata.generate_function_definition().display())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                    ),
+                    (
+                        "description".to_string(),
+                        Self::format_comments(
+                            &root.name,
+                            root.doc_comments.as_ref().unwrap_or(&vec![]),
+                            options,
+                            hbs_registry,
+                        ),
+                    ),
+                ]);
+
                 let docs = match options.markdown_processor {
                     MarkdownProcessor::MdBook => {
-                        format!(
-                            r#"<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
-
-<h2 class="func-name"> <code>{}</code> {} </h2>
-
-```rust,ignore
-{}
-```
-{}
-</div>
-</br>
-"#,
-                            // Add a specific prefix for the function type documented.
-                            root_definition.type_to_str(),
-                            root_definition.name(),
-                            metadata
-                                .iter()
-                                .map(|metadata| metadata.generate_function_definition().display())
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                            Self::format_comments(
-                                &root.name,
-                                root.doc_comments.as_ref().unwrap_or(&vec![]),
-                                options
-                            )
-                        )
+                        hbs_registry.render("mdbook-function", &data).unwrap()
                     }
                     MarkdownProcessor::Docusaurus => {
-                        format!(
-                            r#"## <code>{}</code> {}
-```js
-{}
-```
-{}
-"#,
-                            // Add a specific prefix for the function type documented.
-                            root_definition.type_to_str(),
-                            root_definition.name(),
-                            metadata
-                                .iter()
-                                .map(|metadata| metadata.generate_function_definition().display())
-                                .collect::<Vec<_>>()
-                                .join("\n"),
-                            Self::format_comments(
-                                &root.name,
-                                root.doc_comments.as_ref().unwrap_or(&vec![]),
-                                options
-                            )
-                        )
+                        hbs_registry.render("docusaurus-function", &data).unwrap()
                     }
                 };
 
@@ -120,6 +103,7 @@ impl DocItem {
         metadata: CustomTypesMetadata,
         namespace: &str,
         options: &Options,
+        hbs_registry: &handlebars::Handlebars,
     ) -> Result<Self, AutodocsError> {
         let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
             Self::find_index(
@@ -130,40 +114,24 @@ impl DocItem {
         } else {
             0
         };
+
+        // Build data that needs to be injected in the type template.
+        let data = std::collections::BTreeMap::from([
+            ("name".to_string(), metadata.display_name.to_string()),
+            (
+                "description".to_string(),
+                Self::format_comments(
+                    metadata.display_name.as_str(),
+                    metadata.doc_comments.as_ref().unwrap_or(&vec![]),
+                    options,
+                    hbs_registry,
+                ),
+            ),
+        ]);
+
         let docs = match options.markdown_processor {
-            MarkdownProcessor::MdBook => {
-                format!(
-                    r#"<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
-
-<h2 class="func-name"> <code>type</code> {} </h2>
-
-{}
-</div>
-</br>
-"#,
-                    // Add a specific prefix for the function type documented.
-                    metadata.display_name,
-                    Self::format_comments(
-                        metadata.display_name.as_str(),
-                        metadata.doc_comments.as_ref().unwrap_or(&vec![]),
-                        options
-                    )
-                )
-            }
-            MarkdownProcessor::Docusaurus => {
-                format!(
-                    r#"## <code>type</code> {}
-{}
-"#,
-                    // Add a specific prefix for the function type documented.
-                    metadata.display_name,
-                    Self::format_comments(
-                        metadata.display_name.as_str(),
-                        metadata.doc_comments.as_ref().unwrap_or(&vec![]),
-                        options
-                    )
-                )
-            }
+            MarkdownProcessor::MdBook => hbs_registry.render("mdbook-type", &data).unwrap(),
+            MarkdownProcessor::Docusaurus => hbs_registry.render("docusaurus-type", &data).unwrap(),
         };
 
         Ok(Self::CustomType {
@@ -215,15 +183,24 @@ impl DocItem {
 
     /// Format the function doc comments to make them
     /// into readable markdown.
-    pub fn format_comments(name: &str, doc_comments: &[String], options: &Options) -> String {
+
+    pub fn format_comments(
+        name: &str,
+        doc_comments: &[String],
+        options: &Options,
+        hbs_registry: &handlebars::Handlebars,
+    ) -> String {
         let doc_comments = doc_comments.to_vec();
         let removed_extra_tokens = Self::remove_extra_tokens(doc_comments).join("\n");
         let remove_comments = Self::fmt_doc_comments(removed_extra_tokens);
         let remove_test_code = Self::remove_test_code(&remove_comments);
 
-        options
-            .sections_format
-            .fmt_sections(name, &options.markdown_processor, remove_test_code)
+        options.sections_format.fmt_sections(
+            name,
+            &options.markdown_processor,
+            remove_test_code,
+            hbs_registry,
+        )
     }
 
     /// Remove crate specific comments, like `rhai-autodocs:index`.

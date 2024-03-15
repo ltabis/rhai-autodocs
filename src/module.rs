@@ -63,6 +63,7 @@ impl ModuleMetadata {
 pub fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
+    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
@@ -71,7 +72,7 @@ pub fn generate_module_documentation(
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation_inner(options, None, "global", &metadata)
+    generate_module_documentation_inner(options, None, "global", &metadata, hbs_registry)
 }
 
 fn generate_module_documentation_inner(
@@ -79,46 +80,43 @@ fn generate_module_documentation_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
+    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
 
     let documentation = match options.markdown_processor {
-        options::MarkdownProcessor::MdBook => {
-            format!(
-                r#"# {}
-
-```Namespace: {}```
-
-{}"#,
-                &name,
-                &namespace,
-                metadata
-                    .fmt_doc_comments()
-                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
+        options::MarkdownProcessor::MdBook => hbs_registry
+            .render(
+                "mdbook-header",
+                &std::collections::BTreeMap::from_iter([
+                    ("title".to_string(), name.clone()),
+                    ("namespace".to_string(), namespace.clone()),
+                    (
+                        "body".to_string(),
+                        metadata
+                            .fmt_doc_comments()
+                            .map_or_else(String::default, |doc| format!("{doc}\n\n")),
+                    ),
+                ]),
             )
-        }
-        options::MarkdownProcessor::Docusaurus => {
-            format!(
-                r#"---
-title: {}
-slug: /{}
----
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-```Namespace: {}```
-
-{}"#,
-                &name,
-                &namespace,
-                &namespace,
-                metadata
-                    .fmt_doc_comments()
-                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
+            .unwrap(),
+        options::MarkdownProcessor::Docusaurus => hbs_registry
+            .render(
+                "docusaurus-header",
+                &std::collections::BTreeMap::from_iter([
+                    ("title".to_string(), name.clone()),
+                    ("slug".to_string(), namespace.clone()),
+                    ("namespace".to_string(), namespace.clone()),
+                    (
+                        "body".to_string(),
+                        metadata
+                            .fmt_doc_comments()
+                            .map_or_else(String::default, |doc| format!("{doc}\n\n")),
+                    ),
+                ]),
             )
-        }
+            .unwrap(),
     };
 
     let mut md = ModuleDocumentation {
@@ -133,7 +131,12 @@ import TabItem from '@theme/TabItem';
 
     if let Some(types) = &metadata.custom_types {
         for ty in types {
-            items.push(DocItem::new_custom_type(ty.clone(), &namespace, options)?);
+            items.push(DocItem::new_custom_type(
+                ty.clone(),
+                &namespace,
+                options,
+                hbs_registry,
+            )?);
         }
     }
 
@@ -144,6 +147,7 @@ import TabItem from '@theme/TabItem';
                 name.replace("get$", "").replace("set$", "").as_str(),
                 &namespace,
                 options,
+                hbs_registry,
             ) {
                 items.push(doc_item);
             }
@@ -165,6 +169,7 @@ import TabItem from '@theme/TabItem';
                 sub_module,
                 &serde_json::from_value::<ModuleMetadata>(value.clone())
                     .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
+                hbs_registry,
             )?);
         }
     }
@@ -249,35 +254,31 @@ mod test {
 My own module.
 
 <div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+    <h2 class="func-name"> <code>fn</code> hello_world </h2>
 
-<h2 class="func-name"> <code>fn</code> hello_world </h2>
+    ```rust,ignore
+    fn hello_world()
+    ```
 
-```rust,ignore
-fn hello_world()
-```
+    <details>
+    <summary markdown="span"> details </summary>
 
-<details>
-<summary markdown="span"> details </summary>
-
-A function that prints to stdout.
+    A function that prints to stdout.
 </details>
-
 </div>
 </br>
 <div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+    <h2 class="func-name"> <code>fn</code> add </h2>
 
-<h2 class="func-name"> <code>fn</code> add </h2>
+    ```rust,ignore
+    fn add(a: int, b: int) -> int
+    ```
 
-```rust,ignore
-fn add(a: int, b: int) -> int
-```
+    <details>
+    <summary markdown="span"> details </summary>
 
-<details>
-<summary markdown="span"> details </summary>
-
-A function that adds two integers together.
+    A function that adds two integers together.
 </details>
-
 </div>
 </br>
 "#

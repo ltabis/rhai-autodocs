@@ -1,0 +1,21 @@
+<div group="{{function_name}}" id="{{function_name}}-description" style="display: block;" markdown="span"
+    class="tabcontent">
+
+    {{!-- List of tab buttons --}}
+    <div class="tab">
+        {{#each sections as |section|}}
+        <button group="{{function_name}}" id="link-{{function_name}}-description" class="tablinks active"
+            onclick="openTab(event, '{{function_name}}', '{{section.name}}')">
+            {{section.name}}
+        </button>
+        {{/each}}
+    </div>
+
+    {{!-- List of tab bodies --}}
+    {{#each sections as |section|}}
+    <div group="{{function_name}}" id="{{function_name}}-{{section.name}}" class="tabcontent">
+        {{section.body}}
+    </div>
+    {{/each}}
+
+</div>
