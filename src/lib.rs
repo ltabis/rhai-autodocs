@@ -5,8 +5,6 @@ pub mod doc_item;
 pub mod function;
 pub mod glossary;
 pub mod module;
-// TODO: provide custom templates.
-mod templates;
 
 pub use glossary::ModuleGlossary;
 pub use module::{
