@@ -1,10 +1,7 @@
-use serde_json::json;
-
 use crate::{
     doc_item::DocItem,
     glossary::{generate_module_glossary, ModuleGlossary},
     module::ModuleDocumentation,
-    templates::build_templates_registry,
 };
 
 use super::{error::AutodocsError, generate_module_documentation};
@@ -27,7 +24,6 @@ pub struct Options {
     pub(crate) items_order: ItemsOrder,
     pub(crate) sections_format: SectionFormat,
     pub(crate) include_standard_packages: bool,
-    pub(crate) markdown_processor: MarkdownProcessor,
 }
 
 /// Create new options used to configure docs generation.
@@ -61,14 +57,6 @@ impl Options {
         self
     }
 
-    /// Generate markdown code compatible for a specific markdown processor.
-    /// See [`MarkdownProcessor`] for more details.
-    pub fn for_markdown_processor(mut self, markdown_processor: MarkdownProcessor) -> Self {
-        self.markdown_processor = markdown_processor;
-
-        self
-    }
-
     /// Generate documentation based on an engine instance.
     /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
     ///
@@ -79,8 +67,7 @@ impl Options {
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
     pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
-        let registry = build_templates_registry();
-        generate_module_documentation(engine, &self, &registry)
+        generate_module_documentation(engine, &self)
     }
 
     /// Generate documentation based on an engine instance and a list of all functions signature.
@@ -96,11 +83,9 @@ impl Options {
         &self,
         engine: &rhai::Engine,
     ) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
-        let registry = build_templates_registry();
-
         Ok((
-            generate_module_documentation(engine, self, &registry)?,
-            generate_module_glossary(engine, self, &registry)?,
+            generate_module_documentation(engine, self)?,
+            generate_module_glossary(engine, self)?,
         ))
     }
 }
@@ -172,140 +157,6 @@ pub enum SectionFormat {
     /// so checking for code blocks and `#` line start is not required because it
     /// was supposed to be removed.
     Tabs,
-}
-
-impl SectionFormat {
-    pub(crate) fn fmt_sections(
-        &self,
-        function_name: &str,
-        markdown_processor: &MarkdownProcessor,
-        docs: String,
-        hbs_registry: &handlebars::Handlebars,
-    ) -> String {
-        let format = match self {
-            // TODO: replace by handlebars.
-            SectionFormat::Rust => hbs_registry
-                .render("sections-rust", &json!({ "body": docs }))
-                .unwrap(),
-            SectionFormat::Tabs => {
-                let mut sections = vec![];
-                let mut current = Section::default();
-
-                // Start by extracting all sections from markdown comments.
-                docs.lines().fold(true, |first, line| {
-                    if let Some((_prefix, name)) = line.split_once("# ") {
-                        if !first {
-                            sections.push(current.clone());
-                        }
-
-                        current = Section {
-                            name: name.to_string(),
-                            body: String::default(),
-                        };
-                    } else {
-                        current.body.push_str(line);
-                        current.body.push('\n');
-                    }
-
-                    false
-                });
-
-                let data = json!({
-                    "function_name": function_name,
-                    "sections": sections
-                });
-
-                match markdown_processor {
-                    MarkdownProcessor::MdBook => {
-                        hbs_registry.render("mdbook-sections-tabs", &data).unwrap()
-                        //                         let mut sections = vec![];
-                        //                         let mut tab_content = docs.lines().fold(
-                        //                             format!(
-                        //                                 r#"
-                        // <div group="{function_name}" id="{function_name}-description" style="display: block;" markdown="span" class="tabcontent">
-                        // "#
-                        //                             ),
-                        //                             |mut state, line| {
-                        //                                 if let Some((_, section)) = line.split_once("# ") {
-                        //                                     sections.push(section);
-                        //                                     state.push_str("\n</div>\n");
-                        //                                     state.push_str(&format!(
-                        //                                         r#"
-                        // <div group="{function_name}" id="{function_name}-{section}" class="tabcontent">
-                        // "#
-                        //                                     ));
-                        //                                 } else {
-                        //                                     state.push_str(line);
-                        //                                     state.push('\n');
-                        //                                 }
-
-                        //                                 state
-                        //                             },
-                        //                         );
-
-                        //                         tab_content += "</div>\n";
-
-                        //                         sections.into_iter().fold(
-                        //                             format!(
-                        //                                 r#"
-                        // <div class="tab">
-                        //     <button
-                        //         group="{function_name}"
-                        //         id="link-{function_name}-description"
-                        //         class="tablinks active"
-                        //         onclick="openTab(event, '{function_name}', 'description')">
-                        //         Description
-                        //     </button>"#
-                        //                             ),
-                        //                             |state, section| {
-                        //                                 state
-                        //                                     + format!(
-                        //                                         r#"
-                        // <button
-                        //     group="{function_name}"
-                        //     id="link-{function_name}-{section}"
-                        //     class="tablinks"
-                        //     onclick="openTab(event, '{function_name}', '{section}')">
-                        //     {section}
-                        // </button>"#
-                        //                                     )
-                        //                                     .as_str()
-                        //                             },
-                        //                         ) + "</div>\n"
-                        //                             + tab_content.as_str()
-                    }
-
-                    MarkdownProcessor::Docusaurus => {
-                        // let mut content =
-                        //     "<Tabs>\n<TabItem value=\"Description\" default>\n".to_string();
-
-                        // for line in docs.lines() {
-                        //     if let Some((_, section)) = line.split_once("# ") {
-                        //         content.push_str("</TabItem>\n\n");
-                        //         content
-                        //             .push_str(&format!("<TabItem value=\"{section}\" default>\n"));
-                        //     } else {
-                        //         content.push_str(
-                        //             // Removing rust links wrapped in the '<>' characters because they
-                        //             // are treated as components.
-                        //             &line.replace(['<', '>'], ""),
-                        //         );
-                        //         content.push('\n');
-                        //     }
-                        // }
-
-                        // content += "\n</TabItem>\n</Tabs>\n";
-                        // content
-                        hbs_registry
-                            .render("docusaurus-sections-tabs", &data)
-                            .unwrap()
-                    }
-                }
-            }
-        };
-
-        dbg!(format)
-    }
 }
 
 #[derive(Default, Clone, serde::Serialize)]

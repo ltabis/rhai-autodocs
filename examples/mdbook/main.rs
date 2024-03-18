@@ -55,7 +55,6 @@ fn main() {
         .include_standard_packages(false)
         .order_items_with(rhai_autodocs::module::options::ItemsOrder::ByIndex)
         .format_sections_with(rhai_autodocs::module::options::SectionFormat::Tabs)
-        .for_markdown_processor(rhai_autodocs::module::options::MarkdownProcessor::MdBook)
         .generate(&engine)
         .expect("failed to generate documentation");
 

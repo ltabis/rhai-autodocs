@@ -8,4 +8,27 @@ import TabItem from '@theme/TabItem';
 
 ```Namespace: {{namespace}}```
 
-{{body}}
+{{description}}
+
+{{!-- Render all module items (custom types and functions) --}}
+{{#each items as |item|}}
+
+## <code>{{item.type}}</code> {{item.name}}
+
+{{!-- Render function signatures if not a type --}}
+{{#if item.type}}
+```js
+{{!-- TODO: {{each}} for function signatures --}}
+{{{item.signatures}}}
+```
+{{/if}}
+
+<Tabs>
+    {{#each item.sections as |section|}}
+    <TabItem value="{{section.name}}" default>
+        {{section.body}}
+    </TabItem>
+    {{/each}}
+</Tabs>
+{{!-- comment trick to add a line --}}
+{{/each}}

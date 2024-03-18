@@ -1,19 +1,16 @@
 pub mod error;
 pub mod options;
 
-use serde::{Deserialize, Serialize};
+pub use self::options::options;
 
+use self::{error::AutodocsError, options::Options};
 use crate::custom_types::CustomTypesMetadata;
 use crate::doc_item::DocItem;
 use crate::function::FunctionMetadata;
+use serde::{Deserialize, Serialize};
 
-use self::error::AutodocsError;
-use self::options::Options;
-
-pub use self::options::options;
-
-#[derive(Debug)]
 /// Rhai module documentation in markdown format.
+#[derive(Debug)]
 pub struct ModuleDocumentation {
     /// Complete path to the module.
     pub namespace: String,
@@ -41,16 +38,6 @@ pub(crate) struct ModuleMetadata {
     pub modules: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
-impl ModuleMetadata {
-    /// Format the module doc comments to make them
-    /// readable markdown.
-    pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc
-            .clone()
-            .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
-    }
-}
-
 /// Generate documentation based on an engine instance.
 /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
 ///
@@ -63,16 +50,16 @@ impl ModuleMetadata {
 pub fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
-    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let json_fns = engine
-        .gen_fn_metadata_to_json(options.include_standard_packages)
+        // .gen_fn_metadata_to_json(options.include_standard_packages)
+        .gen_fn_metadata_to_json(false)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
-    generate_module_documentation_inner(options, None, "global", &metadata, hbs_registry)
+    generate_module_documentation_inner(options, None, "global", &metadata)
 }
 
 fn generate_module_documentation_inner(
@@ -80,44 +67,16 @@ fn generate_module_documentation_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
-    hbs_registry: &handlebars::Handlebars,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
-
-    let documentation = match options.markdown_processor {
-        options::MarkdownProcessor::MdBook => hbs_registry
-            .render(
-                "mdbook-header",
-                &std::collections::BTreeMap::from_iter([
-                    ("title".to_string(), name.clone()),
-                    ("namespace".to_string(), namespace.clone()),
-                    (
-                        "body".to_string(),
-                        metadata
-                            .fmt_doc_comments()
-                            .map_or_else(String::default, |doc| format!("{doc}\n\n")),
-                    ),
-                ]),
-            )
-            .unwrap(),
-        options::MarkdownProcessor::Docusaurus => hbs_registry
-            .render(
-                "docusaurus-header",
-                &std::collections::BTreeMap::from_iter([
-                    ("title".to_string(), name.clone()),
-                    ("slug".to_string(), namespace.clone()),
-                    ("namespace".to_string(), namespace.clone()),
-                    (
-                        "body".to_string(),
-                        metadata
-                            .fmt_doc_comments()
-                            .map_or_else(String::default, |doc| format!("{doc}\n\n")),
-                    ),
-                ]),
-            )
-            .unwrap(),
-    };
+    // Format the module doc comments to make them
+    // readable markdown.
+    let documentation = metadata
+        .doc
+        .clone()
+        .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
+        .unwrap_or_default();
 
     let mut md = ModuleDocumentation {
         namespace: namespace.clone(),
@@ -131,12 +90,7 @@ fn generate_module_documentation_inner(
 
     if let Some(types) = &metadata.custom_types {
         for ty in types {
-            items.push(DocItem::new_custom_type(
-                ty.clone(),
-                &namespace,
-                options,
-                hbs_registry,
-            )?);
+            items.push(DocItem::new_custom_type(ty.clone(), &namespace, options)?);
         }
     }
 
@@ -147,7 +101,6 @@ fn generate_module_documentation_inner(
                 name.replace("get$", "").replace("set$", "").as_str(),
                 &namespace,
                 options,
-                hbs_registry,
             ) {
                 items.push(doc_item);
             }
@@ -155,10 +108,6 @@ fn generate_module_documentation_inner(
     }
 
     md.items = options.items_order.order_items(items);
-
-    for items in &md.items {
-        md.documentation += items.docs();
-    }
 
     // Generate documentation for each submodule. (if any)
     if let Some(sub_modules) = &metadata.modules {
@@ -169,7 +118,6 @@ fn generate_module_documentation_inner(
                 sub_module,
                 &serde_json::from_value::<ModuleMetadata>(value.clone())
                     .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
-                hbs_registry,
             )?);
         }
     }
@@ -232,7 +180,6 @@ mod test {
         let docs = options::options()
             .include_standard_packages(false)
             .order_items_with(ItemsOrder::ByIndex)
-            .for_markdown_processor(options::MarkdownProcessor::MdBook)
             .generate(&engine)
             .expect("failed to generate documentation");
 

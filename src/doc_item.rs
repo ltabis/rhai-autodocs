@@ -5,23 +5,100 @@ use crate::{
         error::AutodocsError,
         options::{Options, RHAI_ITEM_INDEX_PATTERN},
     },
-    ItemsOrder, MarkdownProcessor,
+    ItemsOrder,
 };
 
 /// Generic representation of documentation for a specific item. (a function, a custom type, etc.)
 #[derive(Debug, Clone)]
 pub enum DocItem {
     Function {
+        root_metadata: FunctionMetadata,
         metadata: Vec<FunctionMetadata>,
         name: String,
         index: usize,
-        docs: String,
     },
     CustomType {
         metadata: CustomTypesMetadata,
         index: usize,
-        docs: String,
     },
+}
+
+use serde::ser::SerializeStruct;
+
+impl serde::Serialize for DocItem {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            DocItem::Function {
+                root_metadata,
+                name,
+                ..
+            } => {
+                let mut state = serializer.serialize_struct("item", 4)?;
+                state.serialize_field("type", "fn")?; // TODO:
+                state.serialize_field("name", name)?;
+                state.serialize_field("signatures", name)?;
+                state.serialize_field("sections", {
+                    &Section::extract_sections(
+                        &root_metadata
+                            .doc_comments
+                            .clone()
+                            .unwrap_or_default()
+                            .join("\n"),
+                    )
+                })?;
+                state.end()
+            }
+            DocItem::CustomType { metadata, .. } => {
+                let mut state = serializer.serialize_struct("item", 2)?;
+                state.serialize_field("name", &metadata.type_name)?;
+                state.serialize_field(
+                    "sections",
+                    &Section::extract_sections(
+                        &metadata.doc_comments.clone().unwrap_or_default().join("\n"),
+                    ),
+                )?;
+                state.end()
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone, serde::Serialize)]
+struct Section {
+    pub name: String,
+    pub body: String,
+}
+
+impl Section {
+    fn extract_sections(docs: &str) -> Vec<Section> {
+        let mut sections = vec![];
+        let mut current_name = String::default();
+        let mut current_body = vec![];
+
+        // Start by extracting all sections from markdown comments.
+        docs.lines().fold(true, |first, line| {
+            if let Some((_prefix, name)) = line.split_once("# ") {
+                if !first {
+                    sections.push(Section {
+                        name: std::mem::take(&mut current_name),
+                        body: DocItem::format_comments(&current_body[..]),
+                    });
+                }
+
+                current_name = name.to_string();
+                current_body = vec![];
+            } else {
+                current_body.push(format!("{line}\n"));
+            }
+
+            false
+        });
+
+        sections
+    }
 }
 
 impl DocItem {
@@ -30,7 +107,6 @@ impl DocItem {
         name: &str,
         namespace: &str,
         options: &Options,
-        hbs_registry: &handlebars::Handlebars,
     ) -> Result<Self, AutodocsError> {
         // Takes the first valid comments found for a function group.
         let root = metadata
@@ -40,7 +116,7 @@ impl DocItem {
         match root {
             // Anonymous functions are ignored.
             Some(root) if !name.starts_with("anon$") => {
-                let root_definition = root.generate_function_definition();
+                // let root_definition = root.generate_function_definition();
                 let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
                     Self::find_index(
                         name,
@@ -51,50 +127,15 @@ impl DocItem {
                     0
                 };
 
-                // Build data that needs to be injected in the fonction template.
-                let data = std::collections::BTreeMap::from([
-                    (
-                        "type".to_string(),
-                        root_definition.type_to_str().to_string(),
-                    ),
-                    ("name".to_string(), root_definition.name().to_string()),
-                    (
-                        "signatures".to_string(),
-                        metadata
-                            .iter()
-                            .map(|metadata| metadata.generate_function_definition().display())
-                            .collect::<Vec<_>>()
-                            .join("\n"),
-                    ),
-                    (
-                        "description".to_string(),
-                        Self::format_comments(
-                            &root.name,
-                            root.doc_comments.as_ref().unwrap_or(&vec![]),
-                            options,
-                            hbs_registry,
-                        ),
-                    ),
-                ]);
-
-                let docs = match options.markdown_processor {
-                    MarkdownProcessor::MdBook => {
-                        hbs_registry.render("mdbook-function", &data).unwrap()
-                    }
-                    MarkdownProcessor::Docusaurus => {
-                        hbs_registry.render("docusaurus-function", &data).unwrap()
-                    }
-                };
-
                 Ok(Self::Function {
+                    root_metadata: root.clone(),
                     metadata: metadata.to_vec(),
                     name: name.to_string(),
                     index,
-                    docs,
                 })
             }
             _ => Err(AutodocsError::Metadata(format!(
-                "No documentation was found for item {namespace}/{name}"
+                "No documentation found for function item {namespace}/{name}"
             ))),
         }
     }
@@ -103,7 +144,6 @@ impl DocItem {
         metadata: CustomTypesMetadata,
         namespace: &str,
         options: &Options,
-        hbs_registry: &handlebars::Handlebars,
     ) -> Result<Self, AutodocsError> {
         let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
             Self::find_index(
@@ -115,30 +155,7 @@ impl DocItem {
             0
         };
 
-        // Build data that needs to be injected in the type template.
-        let data = std::collections::BTreeMap::from([
-            ("name".to_string(), metadata.display_name.to_string()),
-            (
-                "description".to_string(),
-                Self::format_comments(
-                    metadata.display_name.as_str(),
-                    metadata.doc_comments.as_ref().unwrap_or(&vec![]),
-                    options,
-                    hbs_registry,
-                ),
-            ),
-        ]);
-
-        let docs = match options.markdown_processor {
-            MarkdownProcessor::MdBook => hbs_registry.render("mdbook-type", &data).unwrap(),
-            MarkdownProcessor::Docusaurus => hbs_registry.render("docusaurus-type", &data).unwrap(),
-        };
-
-        Ok(Self::CustomType {
-            metadata,
-            index,
-            docs,
-        })
+        Ok(Self::CustomType { metadata, index })
     }
 
     pub fn index(&self) -> usize {
@@ -151,12 +168,6 @@ impl DocItem {
         match self {
             DocItem::CustomType { metadata, .. } => metadata.display_name.as_str(),
             DocItem::Function { name, .. } => name,
-        }
-    }
-
-    pub fn docs(&self) -> &str {
-        match self {
-            DocItem::CustomType { docs, .. } | DocItem::Function { docs, .. } => docs,
         }
     }
 
@@ -183,24 +194,12 @@ impl DocItem {
 
     /// Format the function doc comments to make them
     /// into readable markdown.
-
-    pub fn format_comments(
-        name: &str,
-        doc_comments: &[String],
-        options: &Options,
-        hbs_registry: &handlebars::Handlebars,
-    ) -> String {
+    pub fn format_comments(doc_comments: &[String]) -> String {
         let doc_comments = doc_comments.to_vec();
         let removed_extra_tokens = Self::remove_extra_tokens(doc_comments).join("\n");
         let remove_comments = Self::fmt_doc_comments(removed_extra_tokens);
-        let remove_test_code = Self::remove_test_code(&remove_comments);
 
-        options.sections_format.fmt_sections(
-            name,
-            &options.markdown_processor,
-            remove_test_code,
-            hbs_registry,
-        )
+        Self::remove_test_code(&remove_comments)
     }
 
     /// Remove crate specific comments, like `rhai-autodocs:index`.
