@@ -68,9 +68,9 @@ fn main() {
 
     // Write the documentation in a file.
 
-    for doc in generate_for_docusaurus(&docs).unwrap() {
+    for (name, doc) in generate_for_docusaurus(&docs).unwrap() {
         std::fs::write(
-            std::path::PathBuf::from_iter([path, &format!("{}.mdx", &docs.name)]),
+            std::path::PathBuf::from_iter([path, &format!("{}.mdx", &name)]),
             doc,
         )
         .expect("failed to write documentation");

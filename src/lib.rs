@@ -14,9 +14,11 @@ pub use module::{
 use serde_json::json;
 
 /// Generate documentation for the docusaurus markdown processor.
+///
+/// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
 pub fn generate_for_docusaurus(
     module: &ModuleDocumentation,
-) -> Result<Vec<String>, handlebars::RenderError> {
+) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut handlebars = handlebars::Handlebars::new();
 
     handlebars
@@ -29,7 +31,7 @@ pub fn generate_for_docusaurus(
         .register_partial("ContentPartial", "{{{content}}}")
         .expect("partial is valid");
 
-    let mut documentation = vec![];
+    let mut documentation = std::collections::HashMap::default();
     let data = json!({
         "title": module.name,
         "slug": module.name,
@@ -38,7 +40,10 @@ pub fn generate_for_docusaurus(
         "items": module.items,
     });
 
-    documentation.push(handlebars.render("docusaurus-module", &data)?);
+    documentation.insert(
+        module.name.to_string(),
+        handlebars.render("docusaurus-module", &data)?,
+    );
 
     for sub in &module.sub_modules {
         documentation.extend(generate_for_docusaurus(sub)?);
