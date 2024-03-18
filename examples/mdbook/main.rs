@@ -1,4 +1,5 @@
 use rhai::plugin::*;
+use rhai_autodocs::generate_for_mdbook;
 
 /// My own module.
 #[export_module]
@@ -60,20 +61,14 @@ fn main() {
 
     let path = "./examples/mdbook/mdbook-example/src";
 
-    // Write the documentation in a file.
-    write_docs(path, &docs);
+    // Write the documentation in files.
+    for (name, doc) in generate_for_mdbook(&docs).unwrap() {
+        std::fs::write(
+            std::path::PathBuf::from_iter([path, &format!("{}.md", &name)]),
+            doc,
+        )
+        .expect("failed to write documentation");
+    }
 
     println!("documentation generated to {path:?}");
-}
-
-fn write_docs(path: &str, docs: &rhai_autodocs::ModuleDocumentation) {
-    std::fs::write(
-        std::path::PathBuf::from_iter([path, &format!("{}.md", &docs.name)]),
-        &docs.documentation,
-    )
-    .expect("failed to write documentation");
-
-    for doc in &docs.sub_modules {
-        write_docs(path, doc);
-    }
 }

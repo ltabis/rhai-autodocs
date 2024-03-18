@@ -145,7 +145,7 @@ pub(crate) fn group_functions(
 
 #[cfg(test)]
 mod test {
-    use crate::module::options::ItemsOrder;
+    use crate::{generate_for_docusaurus, module::options::ItemsOrder};
 
     use super::*;
     use rhai::plugin::*;
@@ -185,7 +185,10 @@ mod test {
 
         assert_eq!(docs.name, "global");
         assert_eq!(
-            docs.documentation,
+            generate_for_docusaurus(&docs)
+                .unwrap()
+                .get("global")
+                .unwrap(),
             "# global\n\n```Namespace: global```\n\n"
         );
 

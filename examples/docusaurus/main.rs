@@ -66,8 +66,7 @@ fn main() {
 
     let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
 
-    // Write the documentation in a file.
-
+    // Write the documentation in files.
     for (name, doc) in generate_for_docusaurus(&docs).unwrap() {
         std::fs::write(
             std::path::PathBuf::from_iter([path, &format!("{}.mdx", &name)]),

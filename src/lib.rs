@@ -19,18 +19,47 @@ use serde_json::json;
 pub fn generate_for_docusaurus(
     module: &ModuleDocumentation,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
-    let mut handlebars = handlebars::Handlebars::new();
+    let mut hbs_registry = handlebars::Handlebars::new();
 
-    handlebars
+    hbs_registry
         .register_template_string(
             "docusaurus-module",
             include_str!("handlebars/docusaurus/header.hbs"),
         )
         .expect("template is valid");
-    handlebars
+    hbs_registry
         .register_partial("ContentPartial", "{{{content}}}")
         .expect("partial is valid");
 
+    generate(module, "docusaurus-module", &hbs_registry)
+}
+
+/// Generate documentation for the mdbook markdown processor.
+///
+/// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+pub fn generate_for_mdbook(
+    module: &ModuleDocumentation,
+) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
+    let mut hbs_registry = handlebars::Handlebars::new();
+
+    hbs_registry
+        .register_template_string(
+            "mdbook-module",
+            include_str!("handlebars/mdbook/header.hbs"),
+        )
+        .expect("template is valid");
+    hbs_registry
+        .register_partial("ContentPartial", "{{{content}}}")
+        .expect("partial is valid");
+
+    generate(module, "mdbook-module", &hbs_registry)
+}
+
+fn generate(
+    module: &ModuleDocumentation,
+    template: &str,
+    hbs_registry: &handlebars::Handlebars,
+) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
     let data = json!({
         "title": module.name,
@@ -42,11 +71,11 @@ pub fn generate_for_docusaurus(
 
     documentation.insert(
         module.name.to_string(),
-        handlebars.render("docusaurus-module", &data)?,
+        hbs_registry.render(template, &data)?,
     );
 
     for sub in &module.sub_modules {
-        documentation.extend(generate_for_docusaurus(sub)?);
+        documentation.extend(generate(sub, template, hbs_registry)?);
     }
 
     Ok(documentation)
