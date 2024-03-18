@@ -53,7 +53,7 @@ impl serde::Serialize for DocItem {
             }
             DocItem::CustomType { metadata, .. } => {
                 let mut state = serializer.serialize_struct("item", 2)?;
-                state.serialize_field("name", &metadata.type_name)?;
+                state.serialize_field("name", &metadata.display_name)?;
                 state.serialize_field(
                     "sections",
                     &Section::extract_sections(
@@ -75,7 +75,7 @@ struct Section {
 impl Section {
     fn extract_sections(docs: &str) -> Vec<Section> {
         let mut sections = vec![];
-        let mut current_name = String::default();
+        let mut current_name = "Description".to_string();
         let mut current_body = vec![];
 
         // Start by extracting all sections from markdown comments.

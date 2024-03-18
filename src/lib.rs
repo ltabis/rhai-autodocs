@@ -25,6 +25,9 @@ pub fn generate_for_docusaurus(
             include_str!("handlebars/docusaurus/header.hbs"),
         )
         .expect("template is valid");
+    handlebars
+        .register_partial("ContentPartial", "{{{content}}}")
+        .expect("partial is valid");
 
     let mut documentation = vec![];
     let data = json!({

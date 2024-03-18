@@ -1,5 +1,5 @@
 use rhai::plugin::*;
-use rhai_autodocs::{generate_for_docusaurus, module::generate_module_documentation};
+use rhai_autodocs::generate_for_docusaurus;
 
 /// My own module.
 #[export_module]
@@ -44,6 +44,11 @@ mod my_module {
     pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
         a + b
     }
+
+    /// A new type that does stuff.
+    /// # rhai-autodocs:index:3
+    #[allow(dead_code)]
+    pub type NewType = ();
 }
 
 fn main() {
@@ -59,27 +64,17 @@ fn main() {
         .generate(&engine)
         .expect("failed to generate documentation");
 
-    // let metadata = generate_module_documentation(&engine);
-    for doc in generate_for_docusaurus(&docs).unwrap() {
-        println!("{doc}");
-    }
-
     let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
 
     // Write the documentation in a file.
-    write_docs(path, &docs);
+
+    for doc in generate_for_docusaurus(&docs).unwrap() {
+        std::fs::write(
+            std::path::PathBuf::from_iter([path, &format!("{}.mdx", &docs.name)]),
+            doc,
+        )
+        .expect("failed to write documentation");
+    }
 
     println!("documentation generated to {path:?}");
-}
-
-fn write_docs(path: &str, docs: &rhai_autodocs::ModuleDocumentation) {
-    std::fs::write(
-        std::path::PathBuf::from_iter([path, &format!("{}.mdx", &docs.name)]),
-        &docs.documentation,
-    )
-    .expect("failed to write documentation");
-
-    for doc in &docs.sub_modules {
-        write_docs(path, doc);
-    }
 }
