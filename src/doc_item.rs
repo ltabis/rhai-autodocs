@@ -34,12 +34,24 @@ impl serde::Serialize for DocItem {
             DocItem::Function {
                 root_metadata,
                 name,
+                metadata,
                 ..
             } => {
                 let mut state = serializer.serialize_struct("item", 4)?;
-                state.serialize_field("type", "fn")?; // TODO:
+                state.serialize_field(
+                    "type",
+                    root_metadata.generate_function_definition().type_to_str(),
+                )?;
                 state.serialize_field("name", name)?;
-                state.serialize_field("signatures", name)?;
+                state.serialize_field(
+                    "signatures",
+                    metadata
+                        .iter()
+                        .map(|metadata| metadata.generate_function_definition().display())
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                        .as_str(),
+                )?;
                 state.serialize_field("sections", {
                     &Section::extract_sections(
                         &root_metadata
