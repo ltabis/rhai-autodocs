@@ -128,7 +128,6 @@ impl DocItem {
         match root {
             // Anonymous functions are ignored.
             Some(root) if !name.starts_with("anon$") => {
-                // let root_definition = root.generate_function_definition();
                 let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
                     Self::find_index(
                         name,

@@ -21,9 +21,10 @@ import TabItem from '@theme/TabItem';
     </TabItem>
 </Tabs>
 
-## <code>set</code> age
+## <code>get/set</code> age
 
 ```js
+get Tragedy.age -> int
 set Tragedy.age = int
 ```
 
@@ -40,26 +41,7 @@ set Tragedy.age = int
     </TabItem>
 </Tabs>
 
-## <code>get</code> age
-
-```js
-get Tragedy.age -> int
-```
-
-<Tabs>
-    <TabItem value="Description" default>
-
-        Age of the character.
-        
-        ```js
-        let character = new_romeo();
-        print(character.age); // getter.
-        character.age = 20;   // setter.
-        ```
-    </TabItem>
-</Tabs>
-
-## <code>get</code> name
+## <code>get/set</code> name
 
 ```js
 get Tragedy.name -> string
@@ -100,5 +82,27 @@ fn new_juliet() -> Tragedy
     <TabItem value="Description" default>
 
         build a new Juliet character
+    </TabItem>
+</Tabs>
+
+## <code>index get/set</code> index$
+
+```js
+index get Tragedy[_: int] -> ?
+index set Tragedy[_: int] = ?
+```
+
+<Tabs>
+    <TabItem value="Description" default>
+
+        Get or set a field from the character by index
+        
+        ```js
+        let character = new_romeo();
+        print(character[0]);      // Get the name.
+        print(character[1]);      // Get the age.
+        character[0] = 30;        // Set the age.
+        character[1] = "Paris"; // Set the name.
+        ```
     </TabItem>
 </Tabs>

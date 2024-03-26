@@ -95,12 +95,9 @@ fn generate_module_documentation_inner(
 
     if let Some(functions) = &metadata.functions {
         for (name, polymorphisms) in group_functions(functions) {
-            if let Ok(doc_item) = DocItem::new_function(
-                &polymorphisms[..],
-                name.replace("get$", "").replace("set$", "").as_str(),
-                &namespace,
-                options,
-            ) {
+            if let Ok(doc_item) =
+                DocItem::new_function(&polymorphisms[..], &name, &namespace, options)
+            {
                 items.push(doc_item);
             }
         }
@@ -131,10 +128,13 @@ pub(crate) fn group_functions(
 
     // Rhai function can be polymorphes, so we group them by name.
     functions.iter().for_each(|metadata| {
-        match function_groups.get_mut(&metadata.name) {
+        // Remove getter/setter prefixes to group them and indexers.
+        let name = metadata.name.replace("get$", "").replace("set$", "");
+
+        match function_groups.get_mut(&name) {
             Some(polymorphisms) => polymorphisms.push(metadata.clone()),
             None => {
-                function_groups.insert(metadata.name.clone(), vec![metadata.clone()]);
+                function_groups.insert(name.to_string(), vec![metadata.clone()]);
             }
         };
     });

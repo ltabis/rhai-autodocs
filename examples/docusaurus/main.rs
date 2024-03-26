@@ -80,6 +80,36 @@ pub struct DocumentedType {
 }
 
 impl DocumentedType {
+    fn field_get(&mut self, field: i64) -> rhai::Dynamic {
+        match field {
+            0 => self.age.into(),
+            1 => self.name.clone().into(),
+            _ => rhai::Dynamic::UNIT,
+        }
+    }
+
+    fn field_set(
+        &mut self,
+        field: i64,
+        value: rhai::Dynamic,
+    ) -> Result<(), Box<rhai::EvalAltResult>> {
+        match field {
+            0 => {
+                self.age = value
+                    .try_cast::<i64>()
+                    .ok_or_else::<Box<rhai::EvalAltResult>, _>(|| "age is not a number".into())?
+            }
+            1 => {
+                self.name = value
+                    .try_cast::<String>()
+                    .ok_or_else::<Box<rhai::EvalAltResult>, _>(|| "name is not a string".into())?
+            }
+            index => return Err(format!("index {index} is out of range").into()),
+        };
+
+        Ok(())
+    }
+
     fn build_extra(builder: &mut TypeBuilder<'_, Self>) {
         builder
             .with_fn("new_romeo", || Self {
@@ -97,6 +127,19 @@ impl DocumentedType {
             .and_comments(&[
                 "/// build a new Juliet character",
                 "/// # rhai-autodocs:index:8",
+            ])
+            .with_indexer_get_set(Self::field_get, Self::field_set)
+            .and_comments(&[
+                "/// Get or set a field from the character by index",
+                "///",
+                "/// ```js",
+                "/// let character = new_romeo();",
+                "/// print(character[0]);      // Get the name.",
+                "/// print(character[1]);      // Get the age.",
+                "/// character[0] = 30;        // Set the age.",
+                "/// character[1] = \"Paris\"; // Set the name.",
+                "/// ```",
+                "/// # rhai-autodocs:index:9",
             ]);
     }
 }

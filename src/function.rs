@@ -300,21 +300,8 @@ impl Definition {
         match self {
             Self::Function { .. } => "fn",
             Self::Operator { .. } => "op",
-            Self::Get { .. } => "get",
-            Self::Set { .. } => "set",
-            Self::IndexGet { .. } => "index get",
-            Self::IndexSet { .. } => "index set",
-        }
-    }
-
-    /// Get the name of the definition if stored.
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Function { name, .. } | Self::Operator { name, .. } => name,
-            Self::Get { index, .. }
-            | Self::Set { index, .. }
-            | Self::IndexGet { index, .. }
-            | Self::IndexSet { index, .. } => &index.name,
+            Self::Get { .. } | Self::Set { .. } => "get/set",
+            Self::IndexGet { .. } | Self::IndexSet { .. } => "index get/set",
         }
     }
 }
