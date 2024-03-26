@@ -27,6 +27,8 @@ pub fn generate_for_docusaurus(
             include_str!("handlebars/docusaurus/header.hbs"),
         )
         .expect("template is valid");
+
+    // A partial used to keep indentation for mdx to render correctly.
     hbs_registry
         .register_partial("ContentPartial", "{{{content}}}")
         .expect("partial is valid");
@@ -48,6 +50,8 @@ pub fn generate_for_mdbook(
             include_str!("handlebars/mdbook/header.hbs"),
         )
         .expect("template is valid");
+
+    // A partial used to keep indentation for md to render correctly.
     hbs_registry
         .register_partial("ContentPartial", "{{{content}}}")
         .expect("partial is valid");

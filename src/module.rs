@@ -52,8 +52,7 @@ pub fn generate_module_documentation(
     options: &Options,
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let json_fns = engine
-        // .gen_fn_metadata_to_json(options.include_standard_packages)
-        .gen_fn_metadata_to_json(false)
+        .gen_fn_metadata_to_json(options.include_standard_packages)
         .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
 
     let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)

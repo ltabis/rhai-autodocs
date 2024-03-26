@@ -51,12 +51,64 @@ mod my_module {
     pub type NewType = ();
 }
 
+use rhai::{CustomType, TypeBuilder};
+
+/// This is another type implemented with the `CustomType` trait.
+/// # rhai-autodocs:index:4
+#[allow(dead_code)]
+#[derive(Default, Clone, CustomType)]
+#[rhai_type(name = "Tragedy", extra = Self::build_extra)]
+pub struct DocumentedType {
+    /// Age of the character.
+    ///
+    /// ```js
+    /// let character = new_romeo();
+    /// print(character.age); // getter.
+    /// character.age = 20;   // setter.
+    /// ```
+    /// # rhai-autodocs:index:5
+    pub age: i64,
+    /// Name of the character.
+    ///
+    /// ```js
+    /// let character = new_romeo();
+    /// print(character.name);
+    /// ```
+    /// # rhai-autodocs:index:6
+    #[rhai_type(readonly)]
+    pub name: String,
+}
+
+impl DocumentedType {
+    fn build_extra(builder: &mut TypeBuilder<'_, Self>) {
+        builder
+            .with_fn("new_romeo", || Self {
+                age: 16,
+                name: "Romeo".to_string(),
+            })
+            .and_comments(&[
+                "/// build a new Romeo character",
+                "/// # rhai-autodocs:index:7",
+            ])
+            .with_fn("new_juliet", || Self {
+                age: 13,
+                name: "Juliet".to_string(),
+            })
+            .and_comments(&[
+                "/// build a new Juliet character",
+                "/// # rhai-autodocs:index:8",
+            ]);
+    }
+}
+
 fn main() {
     let mut engine = rhai::Engine::new();
 
+    // Register custom functions and types ...
     engine.register_static_module("my_module", exported_module!(my_module).into());
+    engine.build_type::<DocumentedType>();
 
-    // register custom functions and types ...
+    // Generate documentation structure.
     let docs = rhai_autodocs::module::options()
         .include_standard_packages(false)
         .order_items_with(rhai_autodocs::module::options::ItemsOrder::ByIndex)
@@ -66,7 +118,7 @@ fn main() {
 
     let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
 
-    // Write the documentation in files.
+    // Write the documentation in files for docusaurus.
     for (name, doc) in generate_for_docusaurus(&docs).unwrap() {
         std::fs::write(
             std::path::PathBuf::from_iter([path, &format!("{}.mdx", &name)]),
