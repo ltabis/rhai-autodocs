@@ -1,0 +1,36 @@
+---
+title: {{title}}
+slug: /{{slug}}
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+```Namespace: {{namespace}}```
+
+{{description}}
+
+{{!-- Render all module items (custom types and functions) --}}
+{{#each items as |item|}}
+
+## <code>{{#if item.type}}{{item.type}}{{else}}type{{/if}}</code> {{item.name}}
+
+{{!-- Render function signatures if not a type --}}
+{{#if item.type}}
+```js
+{{!-- TODO: {{each}} for function signatures --}}
+{{{item.signatures}}}
+```
+{{/if}}
+
+<Tabs>
+    {{#each item.sections as |section|}}
+    <TabItem value="{{section.name}}" default>
+
+        {{> ContentPartial content=section.body}}
+
+    </TabItem>
+    {{/each}}
+</Tabs>
+{{/each}}
+{{!-- comment trick to add a line --}}
