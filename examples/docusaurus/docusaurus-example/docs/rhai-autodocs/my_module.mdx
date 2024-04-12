@@ -1,6 +1,6 @@
 ---
 title: my_module
-slug: /global/my_module
+slug: /my_module
 ---
 
 import Tabs from '@theme/Tabs';
@@ -10,45 +10,56 @@ import TabItem from '@theme/TabItem';
 
 My own module.
 
+
 ## <code>fn</code> hello_world
+
 ```js
 fn hello_world()
 fn hello_world(message: String)
 ```
+
 <Tabs>
-<TabItem value="Description" default>
-A function that prints to stdout.
+    <TabItem value="Description" default>
 
-</TabItem>
+        A function that prints to stdout.
+    </TabItem>
+    <TabItem value="Args" default>
 
-<TabItem value="Args" default>
-
-* message - append a message to the greeting. (optional)
-
-</TabItem>
+        
+        * message - append a message to the greeting. (optional)
+    </TabItem>
 </Tabs>
 
 ## <code>fn</code> add
+
 ```js
 fn add(a: int, b: int) -> int
 ```
+
 <Tabs>
-<TabItem value="Description" default>
-A function that adds two integers together.
+    <TabItem value="Description" default>
 
-</TabItem>
+        A function that adds two integers together.
+    </TabItem>
+    <TabItem value="Args" default>
 
-<TabItem value="Args" default>
+        
+        * a - the first integer.
+        * b - the second integer.
+    </TabItem>
+    <TabItem value="Return" default>
 
-* a - the first integer.
-* b - the second integer.
-
-</TabItem>
-
-<TabItem value="Return" default>
-
-* An integer, the result of the addition of `a` and `b`.
-
-</TabItem>
+        
+        * An integer, the result of the addition of `a` and `b`.
+    </TabItem>
 </Tabs>
 
+## <code>type</code> NewType
+
+
+<Tabs>
+    <TabItem value="Description" default>
+
+        A new type that does stuff.
+    </TabItem>
+</Tabs>

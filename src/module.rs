@@ -1,19 +1,16 @@
 pub mod error;
 pub mod options;
 
-use serde::{Deserialize, Serialize};
+pub use self::options::options;
 
+use self::{error::AutodocsError, options::Options};
 use crate::custom_types::CustomTypesMetadata;
 use crate::doc_item::DocItem;
 use crate::function::FunctionMetadata;
+use serde::{Deserialize, Serialize};
 
-use self::error::AutodocsError;
-use self::options::Options;
-
-pub use self::options::options;
-
-#[derive(Debug)]
 /// Rhai module documentation in markdown format.
+#[derive(Debug)]
 pub struct ModuleDocumentation {
     /// Complete path to the module.
     pub namespace: String,
@@ -39,16 +36,6 @@ pub(crate) struct ModuleMetadata {
     pub custom_types: Option<Vec<CustomTypesMetadata>>,
     /// Sub-modules, if any, stored as raw json values.
     pub modules: Option<serde_json::Map<String, serde_json::Value>>,
-}
-
-impl ModuleMetadata {
-    /// Format the module doc comments to make them
-    /// readable markdown.
-    pub fn fmt_doc_comments(&self) -> Option<String> {
-        self.doc
-            .clone()
-            .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
-    }
 }
 
 /// Generate documentation based on an engine instance.
@@ -82,44 +69,13 @@ fn generate_module_documentation_inner(
 ) -> Result<ModuleDocumentation, AutodocsError> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
-
-    let documentation = match options.markdown_processor {
-        options::MarkdownProcessor::MdBook => {
-            format!(
-                r#"# {}
-
-```Namespace: {}```
-
-{}"#,
-                &name,
-                &namespace,
-                metadata
-                    .fmt_doc_comments()
-                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
-            )
-        }
-        options::MarkdownProcessor::Docusaurus => {
-            format!(
-                r#"---
-title: {}
-slug: /{}
----
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-```Namespace: {}```
-
-{}"#,
-                &name,
-                &namespace,
-                &namespace,
-                metadata
-                    .fmt_doc_comments()
-                    .map_or_else(String::default, |doc| format!("{doc}\n\n"))
-            )
-        }
-    };
+    // Format the module doc comments to make them
+    // readable markdown.
+    let documentation = metadata
+        .doc
+        .clone()
+        .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
+        .unwrap_or_default();
 
     let mut md = ModuleDocumentation {
         namespace: namespace.clone(),
@@ -139,22 +95,15 @@ import TabItem from '@theme/TabItem';
 
     if let Some(functions) = &metadata.functions {
         for (name, polymorphisms) in group_functions(functions) {
-            if let Ok(doc_item) = DocItem::new_function(
-                &polymorphisms[..],
-                name.replace("get$", "").replace("set$", "").as_str(),
-                &namespace,
-                options,
-            ) {
+            if let Ok(doc_item) =
+                DocItem::new_function(&polymorphisms[..], &name, &namespace, options)
+            {
                 items.push(doc_item);
             }
         }
     }
 
     md.items = options.items_order.order_items(items);
-
-    for items in &md.items {
-        md.documentation += items.docs();
-    }
 
     // Generate documentation for each submodule. (if any)
     if let Some(sub_modules) = &metadata.modules {
@@ -179,10 +128,13 @@ pub(crate) fn group_functions(
 
     // Rhai function can be polymorphes, so we group them by name.
     functions.iter().for_each(|metadata| {
-        match function_groups.get_mut(&metadata.name) {
+        // Remove getter/setter prefixes to group them and indexers.
+        let name = metadata.generate_function_definition().name();
+
+        match function_groups.get_mut(&name) {
             Some(polymorphisms) => polymorphisms.push(metadata.clone()),
             None => {
-                function_groups.insert(metadata.name.clone(), vec![metadata.clone()]);
+                function_groups.insert(name.to_string(), vec![metadata.clone()]);
             }
         };
     });
@@ -192,7 +144,7 @@ pub(crate) fn group_functions(
 
 #[cfg(test)]
 mod test {
-    use crate::module::options::ItemsOrder;
+    use crate::{generate_for_docusaurus, module::options::ItemsOrder};
 
     use super::*;
     use rhai::plugin::*;
@@ -227,59 +179,57 @@ mod test {
         let docs = options::options()
             .include_standard_packages(false)
             .order_items_with(ItemsOrder::ByIndex)
-            .for_markdown_processor(options::MarkdownProcessor::MdBook)
             .generate(&engine)
             .expect("failed to generate documentation");
 
-        assert_eq!(docs.name, "global");
-        assert_eq!(
-            docs.documentation,
-            "# global\n\n```Namespace: global```\n\n"
+        let docs = generate_for_docusaurus(&docs).unwrap();
+
+        pretty_assertions::assert_eq!(
+                docs.get("global")
+                .unwrap(),
+            "---\ntitle: global\nslug: /global\n---\n\nimport Tabs from '@theme/Tabs';\nimport TabItem from '@theme/TabItem';\n\n```Namespace: global```\n\n\n\n"
         );
 
-        let my_module = &docs.sub_modules[0];
-
-        assert_eq!(my_module.name, "my_module");
         pretty_assertions::assert_eq!(
-            my_module.documentation,
-            r#"# my_module
+            docs.get("my_module").unwrap(),
+            r#"---
+title: my_module
+slug: /my_module
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 ```Namespace: global/my_module```
 
 My own module.
 
-<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
 
-<h2 class="func-name"> <code>fn</code> hello_world </h2>
+## <code>fn</code> hello_world
 
-```rust,ignore
+```js
 fn hello_world()
 ```
 
-<details>
-<summary markdown="span"> details </summary>
+<Tabs>
+    <TabItem value="Description" default>
 
-A function that prints to stdout.
-</details>
+        A function that prints to stdout.
+    </TabItem>
+</Tabs>
 
-</div>
-</br>
-<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+## <code>fn</code> add
 
-<h2 class="func-name"> <code>fn</code> add </h2>
-
-```rust,ignore
+```js
 fn add(a: int, b: int) -> int
 ```
 
-<details>
-<summary markdown="span"> details </summary>
+<Tabs>
+    <TabItem value="Description" default>
 
-A function that adds two integers together.
-</details>
-
-</div>
-</br>
+        A function that adds two integers together.
+    </TabItem>
+</Tabs>
 "#
         );
     }

@@ -1,2 +1,4 @@
 # global
 
+```Namespace: global```
+

@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
+/// Metadata exposed by Rhai for functions.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FunctionMetadata {
@@ -299,21 +300,24 @@ impl Definition {
         match self {
             Self::Function { .. } => "fn",
             Self::Operator { .. } => "op",
-            Self::Get { .. } => "get",
-            Self::Set { .. } => "set",
-            Self::IndexGet { .. } => "index get",
-            Self::IndexSet { .. } => "index set",
+            Self::Get { .. } | Self::Set { .. } => "get/set",
+            Self::IndexGet { .. } | Self::IndexSet { .. } => "index get/set",
         }
     }
 
-    /// Get the name of the definition if stored.
-    pub fn name(&self) -> &str {
+    /// Full name of the definition.
+    pub fn name(&self) -> String {
         match self {
-            Self::Function { name, .. } | Self::Operator { name, .. } => name,
-            Self::Get { index, .. }
-            | Self::Set { index, .. }
-            | Self::IndexGet { index, .. }
-            | Self::IndexSet { index, .. } => &index.name,
+            crate::function::Definition::Function { name, .. }
+            | crate::function::Definition::Operator { name, .. } => name.clone(),
+            crate::function::Definition::Set { target, index, .. }
+            | crate::function::Definition::Get { target, index, .. } => {
+                format!("{}.{}", target.ty, index.name)
+            }
+            crate::function::Definition::IndexGet { target, index, .. }
+            | crate::function::Definition::IndexSet { target, index, .. } => {
+                format!("{}.{}", target.ty, index.ty)
+            }
         }
     }
 }
