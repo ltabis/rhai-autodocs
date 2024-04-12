@@ -304,6 +304,22 @@ impl Definition {
             Self::IndexGet { .. } | Self::IndexSet { .. } => "index get/set",
         }
     }
+
+    /// Full name of the definition.
+    pub fn name(&self) -> String {
+        match self {
+            crate::function::Definition::Function { name, .. }
+            | crate::function::Definition::Operator { name, .. } => name.clone(),
+            crate::function::Definition::Set { target, index, .. }
+            | crate::function::Definition::Get { target, index, .. } => {
+                format!("{}.{}", target.ty, index.name)
+            }
+            crate::function::Definition::IndexGet { target, index, .. }
+            | crate::function::Definition::IndexSet { target, index, .. } => {
+                format!("{}.{}", target.ty, index.ty)
+            }
+        }
+    }
 }
 
 #[cfg(test)]

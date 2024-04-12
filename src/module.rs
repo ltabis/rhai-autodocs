@@ -129,7 +129,7 @@ pub(crate) fn group_functions(
     // Rhai function can be polymorphes, so we group them by name.
     functions.iter().for_each(|metadata| {
         // Remove getter/setter prefixes to group them and indexers.
-        let name = metadata.name.replace("get$", "").replace("set$", "");
+        let name = metadata.generate_function_definition().name();
 
         match function_groups.get_mut(&name) {
             Some(polymorphisms) => polymorphisms.push(metadata.clone()),
