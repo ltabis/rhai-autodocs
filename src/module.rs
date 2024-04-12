@@ -182,54 +182,54 @@ mod test {
             .generate(&engine)
             .expect("failed to generate documentation");
 
-        assert_eq!(docs.name, "global");
-        assert_eq!(
-            generate_for_docusaurus(&docs)
-                .unwrap()
-                .get("global")
+        let docs = generate_for_docusaurus(&docs).unwrap();
+
+        pretty_assertions::assert_eq!(
+                docs.get("global")
                 .unwrap(),
-            "# global\n\n```Namespace: global```\n\n"
+            "---\ntitle: global\nslug: /global\n---\n\nimport Tabs from '@theme/Tabs';\nimport TabItem from '@theme/TabItem';\n\n```Namespace: global```\n\n\n\n"
         );
 
-        let my_module = &docs.sub_modules[0];
-
-        assert_eq!(my_module.name, "my_module");
         pretty_assertions::assert_eq!(
-            my_module.documentation,
-            r#"# my_module
+            docs.get("my_module").unwrap(),
+            r#"---
+title: my_module
+slug: /my_module
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 ```Namespace: global/my_module```
 
 My own module.
 
-<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
-    <h2 class="func-name"> <code>fn</code> hello_world </h2>
 
-    ```rust,ignore
-    fn hello_world()
-    ```
+## <code>fn</code> hello_world
 
-    <details>
-    <summary markdown="span"> details </summary>
+```js
+fn hello_world()
+```
 
-    A function that prints to stdout.
-</details>
-</div>
-</br>
-<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
-    <h2 class="func-name"> <code>fn</code> add </h2>
+<Tabs>
+    <TabItem value="Description" default>
 
-    ```rust,ignore
-    fn add(a: int, b: int) -> int
-    ```
+        A function that prints to stdout.
+    </TabItem>
+</Tabs>
 
-    <details>
-    <summary markdown="span"> details </summary>
+## <code>fn</code> add
 
-    A function that adds two integers together.
-</details>
-</div>
-</br>
+```js
+fn add(a: int, b: int) -> int
+```
+
+<Tabs>
+    <TabItem value="Description" default>
+
+        A function that adds two integers together.
+    </TabItem>
+</Tabs>
 "#
         );
     }
