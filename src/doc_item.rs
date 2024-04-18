@@ -3,7 +3,7 @@ use crate::{
     function::FunctionMetadata,
     module::{
         error::AutodocsError,
-        options::{Options, RHAI_ITEM_INDEX_PATTERN},
+        options::{Options, RHAI_IGNORE_PATTERN, RHAI_ITEM_INDEX_PATTERN},
     },
     ItemsOrder,
 };
@@ -119,7 +119,7 @@ impl DocItem {
         name: &str,
         namespace: &str,
         options: &Options,
-    ) -> Result<Self, AutodocsError> {
+    ) -> Result<Option<Self>, AutodocsError> {
         // Takes the first valid comments found for a function group.
         let root = metadata
             .iter()
@@ -128,22 +128,26 @@ impl DocItem {
         match root {
             // Anonymous functions are ignored.
             Some(root) if !name.starts_with("anon$") => {
-                let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
+                if matches!(options.items_order, ItemsOrder::ByIndex) {
                     Self::find_index(
                         name,
                         namespace,
                         root.doc_comments.as_ref().unwrap_or(&vec![]),
                     )?
                 } else {
-                    0
-                };
-
-                Ok(Self::Function {
-                    root_metadata: root.clone(),
-                    metadata: metadata.to_vec(),
-                    name: name.to_string(),
-                    index,
-                })
+                    Some(0)
+                }
+                .map_or_else(
+                    || Ok(None),
+                    |index| {
+                        Ok(Some(Self::Function {
+                            root_metadata: root.clone(),
+                            metadata: metadata.to_vec(),
+                            name: name.to_string(),
+                            index,
+                        }))
+                    },
+                )
             }
             _ => Err(AutodocsError::Metadata(format!(
                 "No documentation found for function item {namespace}/{name}"
@@ -155,18 +159,20 @@ impl DocItem {
         metadata: CustomTypesMetadata,
         namespace: &str,
         options: &Options,
-    ) -> Result<Self, AutodocsError> {
-        let index = if matches!(options.items_order, ItemsOrder::ByIndex) {
+    ) -> Result<Option<Self>, AutodocsError> {
+        if matches!(options.items_order, ItemsOrder::ByIndex) {
             Self::find_index(
                 &metadata.display_name,
                 namespace,
                 metadata.doc_comments.as_ref().unwrap_or(&vec![]),
             )?
         } else {
-            0
-        };
-
-        Ok(Self::CustomType { metadata, index })
+            Some(0)
+        }
+        .map_or_else(
+            || Ok(None),
+            |index| Ok(Some(Self::CustomType { metadata, index })),
+        )
     }
 
     pub fn index(&self) -> usize {
@@ -187,20 +193,26 @@ impl DocItem {
         name: &str,
         namespace: &str,
         doc_comments: &[String],
-    ) -> Result<usize, AutodocsError> {
-        if let Some((_, index)) = doc_comments
-            .iter()
-            .find_map(|line| line.rsplit_once(RHAI_ITEM_INDEX_PATTERN))
-        {
-            index.parse::<usize>().map_err(|err| {
-                AutodocsError::PreProcessing(format!("failed to parsed order metadata: {err}"))
-            })
-        } else {
-            Err(AutodocsError::PreProcessing(format!(
-                "missing order metadata in item {}/{}",
-                namespace, name
-            )))
+    ) -> Result<Option<usize>, AutodocsError> {
+        for line in doc_comments {
+            if let Some((_, index)) = line.rsplit_once(RHAI_ITEM_INDEX_PATTERN) {
+                return index
+                    .parse::<usize>()
+                    .map_err(|err| {
+                        AutodocsError::PreProcessing(format!(
+                            "failed to parsed order metadata: {err}"
+                        ))
+                    })
+                    .map(Some);
+            } else if line.contains(RHAI_IGNORE_PATTERN) {
+                return Ok(None);
+            }
         }
+
+        Err(AutodocsError::PreProcessing(format!(
+            "missing order metadata in item {}/{}",
+            namespace, name
+        )))
     }
 
     /// Format the function doc comments to make them
@@ -218,7 +230,9 @@ impl DocItem {
         dc.into_iter()
             .map(|s| {
                 s.lines()
-                    .filter(|l| !l.contains(RHAI_ITEM_INDEX_PATTERN))
+                    .filter(|l| {
+                        !l.contains(RHAI_ITEM_INDEX_PATTERN) && !l.contains(RHAI_IGNORE_PATTERN)
+                    })
                     .collect::<Vec<_>>()
                     .join("\n")
             })
