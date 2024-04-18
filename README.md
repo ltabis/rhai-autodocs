@@ -16,6 +16,7 @@ Published with [Docusaurus](https://docusaurus.io/).
 ## How to use
 
 ```rust
+#![allow(clippy::needless_doctest_main)]
 use rhai::exported_module;
 use rhai::plugin::*;
 
