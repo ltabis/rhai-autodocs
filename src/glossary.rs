@@ -68,6 +68,9 @@ fn generate_module_glossary_inner(
         vec![]
     });
 
+    // Remove ignored documentation.
+    let items = items.into_iter().flatten().collect::<Vec<DocItem>>();
+
     let items = options.items_order.order_items(items);
 
     let signatures = {
