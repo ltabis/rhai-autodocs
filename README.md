@@ -16,7 +16,6 @@ Published with [Docusaurus](https://docusaurus.io/).
 ## How to use
 
 ```rust
-#![allow(clippy::needless_doctest_main)]
 use rhai::exported_module;
 use rhai::plugin::*;
 
@@ -25,6 +24,8 @@ use rhai::plugin::*;
 /// My own module.
 #[export_module]
 mod my_module {
+    use rhai::plugin::*;
+
     /// A function that prints to stdout.
     ///
     /// # Args
@@ -60,29 +61,27 @@ mod my_module {
 
 // 2. Generate the docs with autodocs. This library can be imported as a build dependency into your build script.
 //    A typical documentation generation workflow would look like this:
-fn main() {
-    // Specify an environment variable that points to the directory
-    // where the documentation will be generated.
-    let docs_path = std::env::var("DOCS_DIR").unwrap_or("target/docs".to_string());
 
-    let mut engine = rhai::Engine::new();
+// Specify an environment variable that points to the directory
+// where the documentation will be generated.
+let docs_path = std::env::var("DOCS_DIR").unwrap_or("target/docs".to_string());
 
-    // We register the module defined in the previous code block for this example,
-    // but you could register other functions and types ...
-    engine.register_static_module("my_module", exported_module!(my_module).into());
+let mut engine = rhai::Engine::new();
 
-    let docs = rhai_autodocs::options()
-        .include_standard_packages(false)
-        .generate(&engine)
-        .expect("failed to generate documentation");
+// We register the module defined in the previous code block for this example,
+// but you could register other functions and types ...
+engine.register_static_module("my_module", exported_module!(my_module).into());
 
-    // Write the documentation in a file, or output to stdout, etc.
-    for (name, docs) in rhai_autodocs::generate_for_docusaurus(&docs).unwrap() {
-        println!("docs for module {name}");
-        println!("{docs}");
-    }
+let docs = rhai_autodocs::options()
+    .include_standard_packages(false)
+    .generate(&engine)
+    .expect("failed to generate documentation");
+
+// Write the documentation in a file, or output to stdout, etc.
+for (name, docs) in rhai_autodocs::generate_for_docusaurus(&docs).unwrap() {
+    println!("docs for module {name}");
+    println!("{docs}");
 }
-
 ```
 
 You need to import the `styles/default.css` file and `src/tabs.js` script for everything to work correctly using the [mdbook](https://rust-lang.github.io/mdBook/index.html) generation. (You can of course override the styles and javascript code if you wish)
