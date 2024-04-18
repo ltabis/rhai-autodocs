@@ -57,6 +57,14 @@ mod my_module {
     pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
         a + b
     }
+
+    /// Use the following directive to not generate documentation:
+    ///
+    /// # rhai-autodocs:ignore
+    #[rhai_fn(global)]
+    pub fn dont_care() {
+        println!("nope");
+    }
 }
 
 // 2. Generate the docs with autodocs. This library can be imported as a build dependency into your build script.
