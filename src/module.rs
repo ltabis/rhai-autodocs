@@ -104,10 +104,7 @@ fn generate_module_documentation_inner(
     }
 
     // Remove ignored documentation.
-    let items = items
-        .into_iter()
-        .filter_map(|item| item)
-        .collect::<Vec<DocItem>>();
+    let items = items.into_iter().flatten().collect::<Vec<DocItem>>();
 
     md.items = options.items_order.order_items(items);
 
