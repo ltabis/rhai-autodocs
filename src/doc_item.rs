@@ -129,11 +129,7 @@ impl DocItem {
             // Anonymous functions are ignored.
             Some(root) if !name.starts_with("anon$") => {
                 if matches!(options.items_order, ItemsOrder::ByIndex) {
-                    Self::find_index(
-                        name,
-                        namespace,
-                        root.doc_comments.as_ref().unwrap_or(&vec![]),
-                    )?
+                    Self::find_index(root.doc_comments.as_ref().unwrap_or(&vec![]))?
                 } else {
                     Some(0)
                 }
@@ -157,15 +153,10 @@ impl DocItem {
 
     pub fn new_custom_type(
         metadata: CustomTypesMetadata,
-        namespace: &str,
         options: &Options,
     ) -> Result<Option<Self>, AutodocsError> {
         if matches!(options.items_order, ItemsOrder::ByIndex) {
-            Self::find_index(
-                &metadata.display_name,
-                namespace,
-                metadata.doc_comments.as_ref().unwrap_or(&vec![]),
-            )?
+            Self::find_index(metadata.doc_comments.as_ref().unwrap_or(&vec![]))?
         } else {
             Some(0)
         }
@@ -189,11 +180,7 @@ impl DocItem {
     }
 
     /// Find the order index of the item by searching for the index pattern.
-    pub fn find_index(
-        name: &str,
-        namespace: &str,
-        doc_comments: &[String],
-    ) -> Result<Option<usize>, AutodocsError> {
+    pub fn find_index(doc_comments: &[String]) -> Result<Option<usize>, AutodocsError> {
         for line in doc_comments {
             if let Some((_, index)) = line.rsplit_once(RHAI_ITEM_INDEX_PATTERN) {
                 return index
@@ -204,15 +191,10 @@ impl DocItem {
                         ))
                     })
                     .map(Some);
-            } else if line.contains(RHAI_IGNORE_PATTERN) {
-                return Ok(None);
             }
         }
 
-        Err(AutodocsError::PreProcessing(format!(
-            "missing order metadata in item {}/{}",
-            namespace, name
-        )))
+        Ok(None)
     }
 
     /// Format the function doc comments to make them

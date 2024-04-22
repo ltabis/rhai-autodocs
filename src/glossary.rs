@@ -52,7 +52,7 @@ fn generate_module_glossary_inner(
     let mut items = if let Some(types) = &metadata.custom_types {
         types
             .iter()
-            .map(|metadata| DocItem::new_custom_type(metadata.clone(), &namespace, options))
+            .map(|metadata| DocItem::new_custom_type(metadata.clone(), options))
             .collect::<Result<Vec<_>, AutodocsError>>()?
     } else {
         vec![]

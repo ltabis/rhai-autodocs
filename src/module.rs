@@ -89,7 +89,7 @@ fn generate_module_documentation_inner(
 
     if let Some(types) = &metadata.custom_types {
         for ty in types {
-            items.push(DocItem::new_custom_type(ty.clone(), &namespace, options)?);
+            items.push(DocItem::new_custom_type(ty.clone(), options)?);
         }
     }
 
