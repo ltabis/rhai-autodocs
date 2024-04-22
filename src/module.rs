@@ -170,6 +170,12 @@ mod test {
         pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
             a + b
         }
+
+        /// This ust be hidden.
+        #[rhai_fn(global)]
+        pub fn hide(a: rhai::INT, b: rhai::INT) -> rhai::INT {
+            a + b
+        }
     }
 
     #[test]
