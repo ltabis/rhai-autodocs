@@ -58,9 +58,8 @@ mod my_module {
         a + b
     }
 
-    /// Use the following directive to not generate documentation:
-    ///
-    /// # rhai-autodocs:ignore
+    /// Documentation for functions that do not have the index preprocessor
+    /// is ignored.
     #[rhai_fn(global)]
     pub fn dont_care() {
         println!("nope");
@@ -86,7 +85,7 @@ let docs = rhai_autodocs::options()
     .expect("failed to generate documentation");
 
 // Write the documentation in a file, or output to stdout, etc.
-for (name, docs) in rhai_autodocs::generate_for_docusaurus(&docs).unwrap() {
+for (name, docs) in rhai_autodocs::generate_for_docusaurus(&docs).expect("failed to generate mdx for docusaurus") {
     println!("docs for module {name}");
     println!("{docs}");
 }
