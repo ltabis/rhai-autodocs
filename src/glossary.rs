@@ -62,7 +62,7 @@ fn generate_module_glossary_inner(
         let groups = group_functions(functions);
         groups
             .iter()
-            .map(|(name, metadata)| DocItem::new_function(metadata, name, &namespace, options))
+            .map(|(name, metadata)| DocItem::new_function(metadata, name, options))
             .collect::<Result<Vec<_>, AutodocsError>>()?
     } else {
         vec![]

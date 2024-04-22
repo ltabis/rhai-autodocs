@@ -3,7 +3,7 @@ use crate::{
     function::FunctionMetadata,
     module::{
         error::AutodocsError,
-        options::{Options, RHAI_IGNORE_PATTERN, RHAI_ITEM_INDEX_PATTERN},
+        options::{Options, RHAI_ITEM_INDEX_PATTERN},
     },
     ItemsOrder,
 };
@@ -117,7 +117,6 @@ impl DocItem {
     pub fn new_function(
         metadata: &[FunctionMetadata],
         name: &str,
-        namespace: &str,
         options: &Options,
     ) -> Result<Option<Self>, AutodocsError> {
         // Takes the first valid comments found for a function group.
@@ -145,9 +144,7 @@ impl DocItem {
                     },
                 )
             }
-            _ => Err(AutodocsError::Metadata(format!(
-                "No documentation found for function item {namespace}/{name}"
-            ))),
+            _ => Ok(None),
         }
     }
 
@@ -212,9 +209,7 @@ impl DocItem {
         dc.into_iter()
             .map(|s| {
                 s.lines()
-                    .filter(|l| {
-                        !l.contains(RHAI_ITEM_INDEX_PATTERN) && !l.contains(RHAI_IGNORE_PATTERN)
-                    })
+                    .filter(|l| !l.contains(RHAI_ITEM_INDEX_PATTERN))
                     .collect::<Vec<_>>()
                     .join("\n")
             })

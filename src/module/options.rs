@@ -7,7 +7,6 @@ use crate::{
 use super::{error::AutodocsError, generate_module_documentation};
 
 pub const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
-pub const RHAI_IGNORE_PATTERN: &str = "# rhai-autodocs:ignore";
 
 /// Types of markdown processor where the documentation generated will be hosted.
 #[derive(Default)]

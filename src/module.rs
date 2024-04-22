@@ -95,9 +95,7 @@ fn generate_module_documentation_inner(
 
     if let Some(functions) = &metadata.functions {
         for (name, polymorphisms) in group_functions(functions) {
-            if let Ok(doc_item) =
-                DocItem::new_function(&polymorphisms[..], &name, &namespace, options)
-            {
+            if let Ok(doc_item) = DocItem::new_function(&polymorphisms[..], &name, options) {
                 items.push(doc_item);
             }
         }
