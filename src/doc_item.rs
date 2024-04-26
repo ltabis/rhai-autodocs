@@ -89,22 +89,32 @@ impl Section {
         let mut sections = vec![];
         let mut current_name = "Description".to_string();
         let mut current_body = vec![];
+        let mut in_code_block = false;
 
         // Start by extracting all sections from markdown comments.
         docs.lines().fold(true, |first, line| {
-            if let Some((_prefix, name)) = line.split_once("# ") {
-                if !first {
-                    sections.push(Section {
-                        name: std::mem::take(&mut current_name),
-                        body: DocItem::format_comments(&current_body[..]),
-                    });
-                }
-
-                current_name = name.to_string();
-                current_body = vec![];
-            } else {
-                current_body.push(format!("{line}\n"));
+            if line.split_once("```").is_some() {
+                in_code_block = !in_code_block;
             }
+
+            match line.split_once("# ") {
+                Some((_prefix, name)) if !in_code_block => {
+                    if !first {
+                        sections.push(Section {
+                            name: std::mem::take(&mut current_name),
+                            body: DocItem::format_comments(&current_body[..]),
+                        });
+                    }
+
+                    current_name = name.to_string();
+                    current_body = vec![];
+                }
+                // Do not append lines of code that starts with the '#' token,
+                // which are removed on rust docs automatically.
+                Some(_) => {}
+                // Append regular lines.
+                None => current_body.push(format!("{line}\n")),
+            };
 
             false
         });

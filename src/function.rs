@@ -81,21 +81,17 @@ fn def_type_name(ty: &str) -> Option<String> {
 /// Remove the result wrapper for a return type since it can be confusing in the documentation
 /// NOTE: should we replace the wrapper by a '!' character or a tag on the function definition ?
 fn remove_result(ty: &str) -> &str {
-    if let Some(ty) = ty.strip_prefix("Result<") {
-        ty.strip_suffix(",Box<EvalAltResult>>")
-            .or_else(|| ty.strip_suffix(",Box<rhai::EvalAltResult>>"))
-            .or_else(|| ty.strip_suffix(", Box<EvalAltResult>>"))
-            .or_else(|| ty.strip_suffix(", Box<rhai::EvalAltResult>>"))
-            .or_else(|| ty.strip_suffix('>'))
-    } else if let Some(ty) = ty.strip_prefix("EngineResult<") {
-        ty.strip_suffix('>')
-    } else if let Some(ty) = ty
-        .strip_prefix("RhaiResultOf<")
-        .or_else(|| ty.strip_prefix("rhai::RhaiResultOf<"))
-    {
-        ty.strip_suffix('>')
-    } else {
-        None
+    let without_result = ty
+        .split_once("Result<")
+        .or_else(|| ty.split_once("RhaiResultOf<"))
+        .map(|(_, ty)| ty);
+
+    match without_result {
+        Some(ty) => ty
+            .split_once(',')
+            .or_else(|| ty.split_once('>'))
+            .map(|(ty, _)| ty),
+        _ => None,
     }
     .map_or(ty, str::trim)
 }
