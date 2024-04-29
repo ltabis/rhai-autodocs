@@ -1,14 +1,14 @@
 #![doc = include_str!("../README.md")]
 
-pub mod custom_types;
+mod custom_types;
 pub mod doc_item;
-pub mod function;
+mod function;
 pub mod glossary;
 pub mod module;
 
 pub use glossary::ModuleGlossary;
 pub use module::{
-    options::{export, ItemsOrder, MarkdownProcessor, SectionFormat},
+    options::{ItemsOrder, MarkdownProcessor, SectionFormat},
     ModuleDocumentation,
 };
 use serde_json::json;
@@ -91,14 +91,14 @@ impl MDBookOptions {
 }
 
 pub mod generate {
-    /// Create a new builder to generate documentation for docusaurus from a [`ModuleDocumentation`] object.
+    /// Create a new builder to generate documentation for docusaurus from a [`super::module::ModuleDocumentation`] object.
     pub fn docusaurus() -> super::DocusaurusOptions {
         super::DocusaurusOptions::default()
     }
 
-    /// Create a new builder to generate documentation for mdbook from a [`ModuleDocumentation`] object.
+    /// Create a new builder to generate documentation for mdbook from a [`super::module::ModuleDocumentation`] object.
     pub fn mdbook() -> super::MDBookOptions {
-        super::MDBookOptions::default()
+        super::MDBookOptions
     }
 }
 
@@ -127,4 +127,13 @@ fn generate(
     }
 
     Ok(documentation)
+}
+
+pub mod export {
+    use crate::module::options::Options;
+
+    /// Create new options used to configure docs generation.
+    pub fn options() -> Options {
+        Options::default()
+    }
 }

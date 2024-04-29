@@ -23,7 +23,7 @@ pub struct ModuleGlossary {
 /// # Errors
 /// * Failed to generate function metadata as json.
 /// * Failed to parse module metadata.
-pub fn generate_module_glossary(
+pub(crate) fn generate_module_glossary(
     engine: &rhai::Engine,
     options: &Options,
 ) -> Result<ModuleGlossary, AutodocsError> {

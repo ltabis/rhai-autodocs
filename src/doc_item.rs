@@ -7,6 +7,7 @@ use crate::{
     },
     ItemsOrder,
 };
+use serde::ser::SerializeStruct;
 
 /// Generic representation of documentation for a specific item. (a function, a custom type, etc.)
 #[derive(Debug, Clone)]
@@ -22,8 +23,6 @@ pub enum DocItem {
         index: usize,
     },
 }
-
-use serde::ser::SerializeStruct;
 
 impl serde::Serialize for DocItem {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -124,7 +123,7 @@ impl Section {
 }
 
 impl DocItem {
-    pub fn new_function(
+    pub(crate) fn new_function(
         metadata: &[FunctionMetadata],
         name: &str,
         options: &Options,
@@ -158,7 +157,7 @@ impl DocItem {
         }
     }
 
-    pub fn new_custom_type(
+    pub(crate) fn new_custom_type(
         metadata: CustomTypesMetadata,
         options: &Options,
     ) -> Result<Option<Self>, AutodocsError> {
@@ -173,12 +172,14 @@ impl DocItem {
         )
     }
 
+    /// Get the index of the item, extracted from the `# rhai-autodocs:index` directive.
     pub fn index(&self) -> usize {
         match self {
             DocItem::CustomType { index, .. } | DocItem::Function { index, .. } => *index,
         }
     }
 
+    /// Get the name of the item.
     pub fn name(&self) -> &str {
         match self {
             DocItem::CustomType { metadata, .. } => metadata.display_name.as_str(),
@@ -187,7 +188,7 @@ impl DocItem {
     }
 
     /// Find the order index of the item by searching for the index pattern.
-    pub fn find_index(doc_comments: &[String]) -> Result<Option<usize>, AutodocsError> {
+    pub(crate) fn find_index(doc_comments: &[String]) -> Result<Option<usize>, AutodocsError> {
         for line in doc_comments {
             if let Some((_, index)) = line.rsplit_once(RHAI_ITEM_INDEX_PATTERN) {
                 return index
@@ -206,7 +207,7 @@ impl DocItem {
 
     /// Format the function doc comments to make them
     /// into readable markdown.
-    pub fn format_comments(doc_comments: &[String]) -> String {
+    pub(crate) fn format_comments(doc_comments: &[String]) -> String {
         let doc_comments = doc_comments.to_vec();
         let removed_extra_tokens = Self::remove_extra_tokens(doc_comments).join("\n");
         let remove_comments = Self::fmt_doc_comments(removed_extra_tokens);
@@ -215,7 +216,7 @@ impl DocItem {
     }
 
     /// Remove crate specific comments, like `rhai-autodocs:index`.
-    pub fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
+    pub(crate) fn remove_extra_tokens(dc: Vec<String>) -> Vec<String> {
         dc.into_iter()
             .map(|s| {
                 s.lines()
@@ -227,7 +228,7 @@ impl DocItem {
     }
 
     /// Remove doc comments identifiers.
-    pub fn fmt_doc_comments(dc: String) -> String {
+    pub(crate) fn fmt_doc_comments(dc: String) -> String {
         dc.replace("/// ", "")
             .replace("///", "")
             .replace("/**", "")
@@ -239,7 +240,7 @@ impl DocItem {
     ///       markdown processors might not.
     /// Remove lines of code that starts with the '#' token,
     /// which are removed on rust docs automatically.
-    pub fn remove_test_code(doc_comments: &str) -> String {
+    pub(crate) fn remove_test_code(doc_comments: &str) -> String {
         let mut formatted = vec![];
         let mut in_code_block = false;
         for line in doc_comments.lines() {

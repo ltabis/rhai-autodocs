@@ -26,13 +26,6 @@ pub struct Options {
     pub(crate) include_standard_packages: bool,
 }
 
-pub mod export {
-    /// Create new options used to configure docs generation.
-    pub fn options() -> super::Options {
-        super::Options::default()
-    }
-}
-
 impl Options {
     /// Include the standard package functions and modules documentation
     /// in the generated documentation markdown.
@@ -154,10 +147,6 @@ pub enum SectionFormat {
     Rust,
     /// Display sections using tabs that wraps all underlying
     /// documentation in them.
-    ///
-    /// NOTE: [`SectionFormat::fmt_sections`] is called after [`remove_test_code`],
-    /// so checking for code blocks and `#` line start is not required because it
-    /// was supposed to be removed.
     Tabs,
 }
 
