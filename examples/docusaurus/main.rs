@@ -153,8 +153,8 @@ fn main() {
     // Generate documentation structure.
     let docs = rhai_autodocs::export::options()
         .include_standard_packages(false)
-        .order_items_with(rhai_autodocs::module::options::ItemsOrder::ByIndex)
-        .format_sections_with(rhai_autodocs::module::options::SectionFormat::Tabs)
+        .order_items_with(rhai_autodocs::export::ItemsOrder::ByIndex)
+        .format_sections_with(rhai_autodocs::export::SectionFormat::Tabs)
         .export(&engine)
         .expect("failed to generate documentation");
 
