@@ -4,7 +4,7 @@ use crate::{
     module::{generate_module_documentation, AutodocsError, ModuleDocumentation},
 };
 
-pub const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
+pub(crate) const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
 /// Types of markdown processor where the documentation generated will be hosted.
 #[derive(Default)]
