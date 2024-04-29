@@ -58,7 +58,7 @@ fn main() {
     println!("documentation generated to {path:?}");
 }
 
-fn write_docs(path: &str, docs: &rhai_autodocs::ModuleDocumentation) {
+fn write_docs(path: &str, docs: &rhai_autodocs::Documentation) {
     std::fs::write(
         std::path::PathBuf::from_str(path).unwrap(),
         &docs.documentation,

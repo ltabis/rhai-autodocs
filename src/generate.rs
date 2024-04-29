@@ -1,6 +1,6 @@
 use serde_json::json;
 
-use crate::ModuleDocumentation;
+use crate::Documentation;
 
 #[derive(Default)]
 pub struct DocusaurusOptions {
@@ -14,6 +14,7 @@ impl DocusaurusOptions {
     /// the slug `/docs/api/`, the slug set in the document will be `/docs/api/my_module`.
     ///
     /// By default the root `/` path is used.
+    #[must_use]
     pub fn with_slug(mut self, slug: &str) -> Self {
         self.slug = Some(slug.to_string());
 
@@ -23,9 +24,14 @@ impl DocusaurusOptions {
     /// Build MDX documentation for docusaurus from the given module documentation struct.
     ///
     /// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+    ///
+    /// # Errors
+    ///
+    /// Handlebar failed to render the variables in the module documentation.
+    #[allow(clippy::missing_panics_doc)]
     pub fn build(
         self,
-        module: &ModuleDocumentation,
+        module: &Documentation,
     ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
         let mut hbs_registry = handlebars::Handlebars::new();
 
@@ -50,7 +56,8 @@ impl DocusaurusOptions {
     }
 }
 
-/// Create a new builder to generate documentation for docusaurus from a [`super::module::ModuleDocumentation`] object.
+/// Create a new builder to generate documentation for docusaurus from a [`super::module::Documentation`] object.
+#[must_use]
 pub fn docusaurus() -> DocusaurusOptions {
     DocusaurusOptions::default()
 }
@@ -62,9 +69,14 @@ impl MDBookOptions {
     /// Build html documentation for mdbook from the given module documentation struct.
     ///
     /// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+    ///
+    /// # Errors
+    ///
+    /// Handlebar failed to render the variables in the module documentation.
+    #[allow(clippy::missing_panics_doc)]
     pub fn build(
         self,
-        module: &ModuleDocumentation,
+        module: &Documentation,
     ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
         let mut hbs_registry = handlebars::Handlebars::new();
 
@@ -84,16 +96,18 @@ impl MDBookOptions {
     }
 }
 
-/// Create a new builder to generate documentation for mdbook from a [`super::module::ModuleDocumentation`] object.
+/// Create a new builder to generate documentation for mdbook from a [`super::module::Documentation`] object.
+#[allow(clippy::missing_const_for_fn)]
+#[must_use]
 pub fn mdbook() -> MDBookOptions {
     MDBookOptions
 }
 
 fn generate(
-    module: &ModuleDocumentation,
+    module: &Documentation,
     template: &str,
     slug: Option<&str>,
-    hbs_registry: &handlebars::Handlebars,
+    hbs_registry: &handlebars::Handlebars<'_>,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
     let data = json!({

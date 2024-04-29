@@ -1,20 +1,11 @@
 use crate::{
     doc_item::DocItem,
-    glossary::{generate_module_glossary, ModuleGlossary},
-    module::{generate_module_documentation, Error, ModuleDocumentation},
+    module::{
+        generate_module_documentation, generate_module_glossary, Documentation, Error, Glossary,
+    },
 };
 
 pub(crate) const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
-
-/// Types of markdown processor where the documentation generated will be hosted.
-#[derive(Default)]
-pub enum MarkdownProcessor {
-    /// Generate documentation for mdbook: <https://rust-lang.github.io/mdBook/>
-    MdBook,
-    /// Generate documentation for docusaurus. <https://docusaurus.io/>
-    #[default]
-    Docusaurus,
-}
 
 #[derive(Default)]
 /// Options to configure documentation generation.
@@ -27,7 +18,8 @@ pub struct Options {
 impl Options {
     /// Include the standard package functions and modules documentation
     /// in the generated documentation markdown.
-    pub fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
+    #[must_use]
+    pub const fn include_standard_packages(mut self, include_standard_packages: bool) -> Self {
         self.include_standard_packages = include_standard_packages;
 
         self
@@ -35,7 +27,8 @@ impl Options {
 
     /// Order documentation items in a specific way.
     /// See [`ItemsOrder`] for more details.
-    pub fn order_items_with(mut self, items_order: ItemsOrder) -> Self {
+    #[must_use]
+    pub const fn order_items_with(mut self, items_order: ItemsOrder) -> Self {
         self.items_order = items_order;
 
         self
@@ -44,7 +37,8 @@ impl Options {
     /// Format doc comments 'sections', markdown that starts with the `#` character,
     /// with special formats.
     /// See [`SectionFormat`] for more details.
-    pub fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
+    #[must_use]
+    pub const fn format_sections_with(mut self, sections_format: SectionFormat) -> Self {
         self.sections_format = sections_format;
 
         self
@@ -59,7 +53,7 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn export(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, Error> {
+    pub fn export(self, engine: &rhai::Engine) -> Result<Documentation, Error> {
         generate_module_documentation(engine, &self)
     }
 
@@ -75,7 +69,7 @@ impl Options {
     pub fn export_with_glossary(
         &self,
         engine: &rhai::Engine,
-    ) -> Result<(ModuleDocumentation, ModuleGlossary), Error> {
+    ) -> Result<(Documentation, Glossary), Error> {
         Ok((
             generate_module_documentation(engine, self)?,
             generate_module_glossary(engine, self)?,
@@ -155,6 +149,7 @@ struct Section {
 }
 
 /// Create new options used to configure docs generation.
+#[must_use]
 pub fn options() -> Options {
     Options::default()
 }

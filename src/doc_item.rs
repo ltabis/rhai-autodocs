@@ -1,7 +1,7 @@
 use crate::{
-    custom_types::CustomTypesMetadata,
+    custom_types,
     export::{ItemsOrder, Options, RHAI_ITEM_INDEX_PATTERN},
-    function::FunctionMetadata,
+    function,
     module::Error,
 };
 use serde::ser::SerializeStruct;
@@ -10,13 +10,13 @@ use serde::ser::SerializeStruct;
 #[derive(Debug, Clone)]
 pub enum DocItem {
     Function {
-        root_metadata: FunctionMetadata,
-        metadata: Vec<FunctionMetadata>,
+        root_metadata: function::Metadata,
+        metadata: Vec<function::Metadata>,
         name: String,
         index: usize,
     },
     CustomType {
-        metadata: CustomTypesMetadata,
+        metadata: custom_types::Metadata,
         index: usize,
     },
 }
@@ -27,7 +27,7 @@ impl serde::Serialize for DocItem {
         S: serde::Serializer,
     {
         match self {
-            DocItem::Function {
+            Self::Function {
                 root_metadata,
                 name,
                 metadata,
@@ -59,7 +59,7 @@ impl serde::Serialize for DocItem {
                 })?;
                 state.end()
             }
-            DocItem::CustomType { metadata, .. } => {
+            Self::CustomType { metadata, .. } => {
                 let mut state = serializer.serialize_struct("item", 2)?;
                 state.serialize_field("name", &metadata.display_name)?;
                 state.serialize_field(
@@ -81,7 +81,7 @@ struct Section {
 }
 
 impl Section {
-    fn extract_sections(docs: &str) -> Vec<Section> {
+    fn extract_sections(docs: &str) -> Vec<Self> {
         let mut sections = vec![];
         let mut current_name = "Description".to_string();
         let mut current_body = vec![];
@@ -96,7 +96,7 @@ impl Section {
             match line.split_once("# ") {
                 Some((_prefix, name)) if !in_code_block => {
                     if !first {
-                        sections.push(Section {
+                        sections.push(Self {
                             name: std::mem::take(&mut current_name),
                             body: DocItem::format_comments(&current_body[..]),
                         });
@@ -121,7 +121,7 @@ impl Section {
 
 impl DocItem {
     pub(crate) fn new_function(
-        metadata: &[FunctionMetadata],
+        metadata: &[function::Metadata],
         name: &str,
         options: &Options,
     ) -> Result<Option<Self>, Error> {
@@ -155,7 +155,7 @@ impl DocItem {
     }
 
     pub(crate) fn new_custom_type(
-        metadata: CustomTypesMetadata,
+        metadata: custom_types::Metadata,
         options: &Options,
     ) -> Result<Option<Self>, Error> {
         if matches!(options.items_order, ItemsOrder::ByIndex) {
@@ -170,17 +170,19 @@ impl DocItem {
     }
 
     /// Get the index of the item, extracted from the `# rhai-autodocs:index` directive.
-    pub fn index(&self) -> usize {
+    #[must_use]
+    pub const fn index(&self) -> usize {
         match self {
-            DocItem::CustomType { index, .. } | DocItem::Function { index, .. } => *index,
+            Self::CustomType { index, .. } | Self::Function { index, .. } => *index,
         }
     }
 
     /// Get the name of the item.
+    #[must_use]
     pub fn name(&self) -> &str {
         match self {
-            DocItem::CustomType { metadata, .. } => metadata.display_name.as_str(),
-            DocItem::Function { name, .. } => name,
+            Self::CustomType { metadata, .. } => metadata.display_name.as_str(),
+            Self::Function { name, .. } => name,
         }
     }
 
@@ -203,7 +205,7 @@ impl DocItem {
     pub(crate) fn format_comments(doc_comments: &[String]) -> String {
         let doc_comments = doc_comments.to_vec();
         let removed_extra_tokens = Self::remove_extra_tokens(doc_comments).join("\n");
-        let remove_comments = Self::fmt_doc_comments(removed_extra_tokens);
+        let remove_comments = Self::fmt_doc_comments(&removed_extra_tokens);
 
         Self::remove_test_code(&remove_comments)
     }
@@ -221,7 +223,7 @@ impl DocItem {
     }
 
     /// Remove doc comments identifiers.
-    pub(crate) fn fmt_doc_comments(dc: String) -> String {
+    pub(crate) fn fmt_doc_comments(dc: &str) -> String {
         dc.replace("/// ", "")
             .replace("///", "")
             .replace("/**", "")
@@ -260,7 +262,7 @@ pub mod test {
     fn test_remove_test_code_simple() {
         pretty_assertions::assert_eq!(
             DocItem::remove_test_code(
-                r#"
+                r"
 # Not removed.
 ```
 fn my_func(a: int) -> () {}
@@ -270,24 +272,24 @@ do something else ...
 # Also this.
 ```
 # Not removed either.
-"#,
+",
             ),
-            r#"
+            r"
 # Not removed.
 ```
 fn my_func(a: int) -> () {}
 do stuff ...
 do something else ...
 ```
-# Not removed either."#,
-        )
+# Not removed either.",
+        );
     }
 
     #[test]
     fn test_remove_test_code_multiple_blocks() {
         pretty_assertions::assert_eq!(
             DocItem::remove_test_code(
-                r#"
+                r"
 ```ignore
 block 1
 # Please hide this.
@@ -302,9 +304,9 @@ john
 doe
 # To hide.
 ```
-"#,
+",
             ),
-            r#"
+            r"
 ```ignore
 block 1
 ```
@@ -315,8 +317,8 @@ block 1
 block 2
 john
 doe
-```"#,
-        )
+```",
+        );
     }
 
     #[test]
@@ -361,6 +363,6 @@ let map = #{
     "hello": "world"
 };
 ```"#,
-        )
+        );
     }
 }

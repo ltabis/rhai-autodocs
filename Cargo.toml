@@ -29,3 +29,11 @@ pretty_assertions = "1.4.0"
 [[example]]
 name = "basic"
 path = "examples/basic/main.rs"
+
+[lints.rust]
+rust_2018_idioms = "warn"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
