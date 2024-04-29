@@ -2,15 +2,13 @@
 
 ```Namespace: global/my_module```
 
-<div style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
     <h2 class="func-name"> <code>fn</code> hello_world </h2>
 
     ```rust,ignore
     fn hello_world()
     fn hello_world(message: String)
     ```
-
-
 
     <div group="hello_world" id="hello_world-description" style="display: block;" markdown="span"
         class="tabcontent">
@@ -33,14 +31,12 @@
     </div>
 </div>
 </br>
-<div style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
+<div markdown="span" style='box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); padding: 15px; border-radius: 5px;'>
     <h2 class="func-name"> <code>fn</code> add </h2>
 
     ```rust,ignore
     fn add(a: int, b: int) -> int
     ```
-
-
 
     <div group="add" id="add-description" style="display: block;" markdown="span"
         class="tabcontent">

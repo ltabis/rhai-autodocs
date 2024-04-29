@@ -161,7 +161,11 @@ fn main() {
     let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
 
     // Write the documentation in files for docusaurus.
-    for (name, doc) in rhai_autodocs::generate::docusaurus().build(&docs).unwrap() {
+    for (name, doc) in rhai_autodocs::generate::docusaurus()
+        .with_slug("/docs/api/")
+        .build(&docs)
+        .unwrap()
+    {
         std::fs::write(
             std::path::PathBuf::from_iter([path, &format!("{}.mdx", &name)]),
             doc,
