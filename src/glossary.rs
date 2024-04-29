@@ -1,6 +1,7 @@
 use crate::{
     doc_item::DocItem,
-    module::{error::AutodocsError, group_functions, options::Options, ModuleMetadata},
+    export::Options,
+    module::{group_functions, AutodocsError, ModuleMetadata},
 };
 
 /// Glossary of all function for a module and it's submodules.

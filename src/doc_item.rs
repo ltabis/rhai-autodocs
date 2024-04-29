@@ -1,11 +1,8 @@
 use crate::{
     custom_types::CustomTypesMetadata,
+    export::{ItemsOrder, Options, RHAI_ITEM_INDEX_PATTERN},
     function::FunctionMetadata,
-    module::{
-        error::AutodocsError,
-        options::{Options, RHAI_ITEM_INDEX_PATTERN},
-    },
-    ItemsOrder,
+    module::AutodocsError,
 };
 use serde::ser::SerializeStruct;
 

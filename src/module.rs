@@ -1,11 +1,28 @@
-pub mod error;
-pub mod options;
-
-use self::{error::AutodocsError, options::Options};
-use crate::custom_types::CustomTypesMetadata;
 use crate::doc_item::DocItem;
 use crate::function::FunctionMetadata;
+use crate::{custom_types::CustomTypesMetadata, export::Options};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug)]
+pub enum AutodocsError {
+    PreProcessing(String),
+    Metadata(String),
+}
+
+impl std::error::Error for AutodocsError {}
+impl std::fmt::Display for AutodocsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ERROR: {}",
+            match self {
+                AutodocsError::PreProcessing(error) => format!("pre-processing error: {error}"),
+                AutodocsError::Metadata(error) =>
+                    format!("failed to parse function or module metadata: {error}"),
+            }
+        )
+    }
+}
 
 /// Rhai module documentation in markdown format.
 #[derive(Debug)]
@@ -143,7 +160,7 @@ pub(crate) fn group_functions(
 
 #[cfg(test)]
 mod test {
-    use crate::{export, generate, module::options::ItemsOrder};
+    use crate::export::{self, ItemsOrder};
 
     use rhai::plugin::*;
 
@@ -187,7 +204,7 @@ mod test {
             .export(&engine)
             .expect("failed to generate documentation");
 
-        let docs = generate::docusaurus().build(&docs).unwrap();
+        let docs = crate::generate::docusaurus().build(&docs).unwrap();
 
         pretty_assertions::assert_eq!(
                 docs.get("global")
