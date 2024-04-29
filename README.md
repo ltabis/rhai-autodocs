@@ -66,16 +66,17 @@ mod my_module {
     }
 }
 
-// 2. Generate the docs with autodocs. This library can be imported as a build dependency into your build script.
+// 2. Generate the docs with autodocs. This library can be imported as a
+//    build dependency into your build script.
 //    A typical documentation generation workflow would look like this:
 
 // Specify an environment variable that points to the directory
 // where the documentation will be generated.
 let docs_path = std::env::var("DOCS_DIR").unwrap_or("target/docs".to_string());
 
-// Create a new engine and register all modules that need to have documentation generated for them.
-// In this example, the module defined in the previous code block is registered into the engine,
-// but you could register other functions and types ...
+// Create a new engine and register all modules that need to have documentation generated
+// for them. In this example, the module defined in the previous code block is registered
+// into the engine, but you could register other functions and types ...
 let mut engine = rhai::Engine::new();
 engine.register_static_module("my_module", exported_module!(my_module).into());
 
@@ -84,7 +85,7 @@ engine.register_static_module("my_module", exported_module!(my_module).into());
 let docs = rhai_autodocs::export::options()
     .include_standard_packages(false)
     .export(&engine)
-    .expect("failed to generate documentation");
+    .expect("failed to export documentation");
 
 /// Or you could use pre-defined templates for docusaurus or mdbook.
 /// Here, documentation is generated for docusaurus with some options.
