@@ -52,7 +52,12 @@ impl DocusaurusOptions {
             .register_partial("ContentPartial", "{{{content}}}")
             .expect("partial is valid");
 
-        generate(module, "docusaurus-module", &hbs_registry)
+        generate(
+            module,
+            "docusaurus-module",
+            self.slug.as_deref(),
+            &hbs_registry,
+        )
     }
 }
 
@@ -81,7 +86,7 @@ impl MDBookOptions {
             .register_partial("ContentPartial", "{{{content}}}")
             .expect("partial is valid");
 
-        generate(module, "mdbook-module", &hbs_registry)
+        generate(module, "mdbook-module", None, &hbs_registry)
     }
 }
 
@@ -100,12 +105,13 @@ pub mod generate {
 fn generate(
     module: &ModuleDocumentation,
     template: &str,
+    slug: Option<&str>,
     hbs_registry: &handlebars::Handlebars,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
     let data = json!({
         "title": module.name,
-        "slug": module.name,
+        "slug": slug.unwrap_or(&module.name),
         "description": module.documentation,
         "namespace": module.namespace,
         "items": module.items,
@@ -117,7 +123,7 @@ fn generate(
     );
 
     for sub in &module.sub_modules {
-        documentation.extend(generate(sub, template, hbs_registry)?);
+        documentation.extend(generate(sub, template, slug, hbs_registry)?);
     }
 
     Ok(documentation)
