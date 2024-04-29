@@ -26,13 +26,6 @@ pub struct Options {
     pub(crate) include_standard_packages: bool,
 }
 
-pub mod export {
-    /// Create new options used to configure docs generation.
-    pub fn options() -> super::Options {
-        super::Options::default()
-    }
-}
-
 impl Options {
     /// Include the standard package functions and modules documentation
     /// in the generated documentation markdown.
