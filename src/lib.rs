@@ -91,12 +91,12 @@ impl MDBookOptions {
 }
 
 pub mod generate {
-    /// Create a new builder to generate documentation for docusaurus from a [`ModuleDocumentation`] object.
+    /// Create a new builder to generate documentation for docusaurus from a [`super::module::ModuleDocumentation`] object.
     pub fn docusaurus() -> super::DocusaurusOptions {
         super::DocusaurusOptions::default()
     }
 
-    /// Create a new builder to generate documentation for mdbook from a [`ModuleDocumentation`] object.
+    /// Create a new builder to generate documentation for mdbook from a [`super::module::ModuleDocumentation`] object.
     pub fn mdbook() -> super::MDBookOptions {
         super::MDBookOptions
     }

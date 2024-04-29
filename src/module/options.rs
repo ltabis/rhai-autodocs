@@ -154,10 +154,6 @@ pub enum SectionFormat {
     Rust,
     /// Display sections using tabs that wraps all underlying
     /// documentation in them.
-    ///
-    /// NOTE: [`SectionFormat::fmt_sections`] is called after [`remove_test_code`],
-    /// so checking for code blocks and `#` line start is not required because it
-    /// was supposed to be removed.
     Tabs,
 }
 
