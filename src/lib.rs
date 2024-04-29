@@ -98,7 +98,7 @@ pub mod generate {
 
     /// Create a new builder to generate documentation for mdbook from a [`ModuleDocumentation`] object.
     pub fn mdbook() -> super::MDBookOptions {
-        super::MDBookOptions::default()
+        super::MDBookOptions
     }
 }
 
