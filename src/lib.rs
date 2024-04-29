@@ -6,5 +6,3 @@ pub mod export;
 mod function;
 pub mod generate;
 pub mod module;
-
-pub use module::{Documentation, Glossary};
