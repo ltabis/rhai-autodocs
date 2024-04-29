@@ -2,7 +2,7 @@ use crate::{
     custom_types::CustomTypesMetadata,
     export::{ItemsOrder, Options, RHAI_ITEM_INDEX_PATTERN},
     function::FunctionMetadata,
-    module::AutodocsError,
+    module::Error,
 };
 use serde::ser::SerializeStruct;
 
@@ -124,7 +124,7 @@ impl DocItem {
         metadata: &[FunctionMetadata],
         name: &str,
         options: &Options,
-    ) -> Result<Option<Self>, AutodocsError> {
+    ) -> Result<Option<Self>, Error> {
         // Takes the first valid comments found for a function group.
         let root = metadata
             .iter()
@@ -157,7 +157,7 @@ impl DocItem {
     pub(crate) fn new_custom_type(
         metadata: CustomTypesMetadata,
         options: &Options,
-    ) -> Result<Option<Self>, AutodocsError> {
+    ) -> Result<Option<Self>, Error> {
         if matches!(options.items_order, ItemsOrder::ByIndex) {
             Self::find_index(metadata.doc_comments.as_ref().unwrap_or(&vec![]))?
         } else {
@@ -185,16 +185,12 @@ impl DocItem {
     }
 
     /// Find the order index of the item by searching for the index pattern.
-    pub(crate) fn find_index(doc_comments: &[String]) -> Result<Option<usize>, AutodocsError> {
+    pub(crate) fn find_index(doc_comments: &[String]) -> Result<Option<usize>, Error> {
         for line in doc_comments {
             if let Some((_, index)) = line.rsplit_once(RHAI_ITEM_INDEX_PATTERN) {
                 return index
                     .parse::<usize>()
-                    .map_err(|err| {
-                        AutodocsError::PreProcessing(format!(
-                            "failed to parsed order metadata: {err}"
-                        ))
-                    })
+                    .map_err(Error::ParseOrderMetadata)
                     .map(Some);
             }
         }

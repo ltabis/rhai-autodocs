@@ -1,7 +1,7 @@
 use crate::{
     doc_item::DocItem,
     export::Options,
-    module::{group_functions, AutodocsError, ModuleMetadata},
+    module::{group_functions, Error, ModuleMetadata},
 };
 
 /// Glossary of all function for a module and it's submodules.
@@ -27,13 +27,13 @@ pub struct ModuleGlossary {
 pub(crate) fn generate_module_glossary(
     engine: &rhai::Engine,
     options: &Options,
-) -> Result<ModuleGlossary, AutodocsError> {
+) -> Result<ModuleGlossary, Error> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
-        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+        .map_err(Error::ParseModuleMetadata)?;
 
-    let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
-        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+    let metadata =
+        serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(Error::ParseModuleMetadata)?;
 
     generate_module_glossary_inner(options, None, "global", &metadata)
 }
@@ -43,7 +43,7 @@ fn generate_module_glossary_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
-) -> Result<ModuleGlossary, AutodocsError> {
+) -> Result<ModuleGlossary, Error> {
     fn make_highlight(color: &str, item_type: &str, definition: &str) -> String {
         format!("- <Highlight color=\"{color}\">{item_type}</Highlight> <code>{{\"{definition}\"}}</code>\n",)
     }
@@ -54,7 +54,7 @@ fn generate_module_glossary_inner(
         types
             .iter()
             .map(|metadata| DocItem::new_custom_type(metadata.clone(), options))
-            .collect::<Result<Vec<_>, AutodocsError>>()?
+            .collect::<Result<Vec<_>, Error>>()?
     } else {
         vec![]
     };
@@ -64,7 +64,7 @@ fn generate_module_glossary_inner(
         groups
             .iter()
             .map(|(name, metadata)| DocItem::new_function(metadata, name, options))
-            .collect::<Result<Vec<_>, AutodocsError>>()?
+            .collect::<Result<Vec<_>, Error>>()?
     } else {
         vec![]
     });
@@ -157,7 +157,7 @@ fn generate_module_glossary_inner(
                     Some(format!("{}/{}", namespace, sub_module)),
                     sub_module,
                     &serde_json::from_value::<ModuleMetadata>(value.clone())
-                        .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
+                        .map_err(Error::ParseModuleMetadata)?,
                 )?;
 
                 mg.content

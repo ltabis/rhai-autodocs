@@ -3,21 +3,26 @@ use crate::function::FunctionMetadata;
 use crate::{custom_types::CustomTypesMetadata, export::Options};
 use serde::{Deserialize, Serialize};
 
+/// rhai-autodocs failed to export documentation for a module.
 #[derive(Debug)]
-pub enum AutodocsError {
-    PreProcessing(String),
-    Metadata(String),
+pub enum Error {
+    /// Something went wrong when parsing the `# rhai-autodocs:index` preprocessor.
+    ParseOrderMetadata(std::num::ParseIntError),
+    /// Something went wrong during the parsing of the module metadata.
+    ParseModuleMetadata(serde_json::Error),
 }
 
-impl std::error::Error for AutodocsError {}
-impl std::fmt::Display for AutodocsError {
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "ERROR: {}",
+            "{}",
             match self {
-                AutodocsError::PreProcessing(error) => format!("pre-processing error: {error}"),
-                AutodocsError::Metadata(error) =>
+                Self::ParseOrderMetadata(error) =>
+                    format!("failed to parse function ordering: {error}"),
+                Self::ParseModuleMetadata(error) =>
                     format!("failed to parse function or module metadata: {error}"),
             }
         )
@@ -65,13 +70,13 @@ pub(crate) struct ModuleMetadata {
 pub(crate) fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
-) -> Result<ModuleDocumentation, AutodocsError> {
+) -> Result<ModuleDocumentation, Error> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
-        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+        .map_err(Error::ParseModuleMetadata)?;
 
-    let metadata = serde_json::from_str::<ModuleMetadata>(&json_fns)
-        .map_err(|error| AutodocsError::Metadata(error.to_string()))?;
+    let metadata =
+        serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(Error::ParseModuleMetadata)?;
 
     generate_module_documentation_inner(options, None, "global", &metadata)
 }
@@ -81,7 +86,7 @@ fn generate_module_documentation_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
-) -> Result<ModuleDocumentation, AutodocsError> {
+) -> Result<ModuleDocumentation, Error> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
     // Format the module doc comments to make them
@@ -129,7 +134,7 @@ fn generate_module_documentation_inner(
                 Some(format!("{}/{}", namespace, sub_module)),
                 sub_module,
                 &serde_json::from_value::<ModuleMetadata>(value.clone())
-                    .map_err(|error| AutodocsError::Metadata(error.to_string()))?,
+                    .map_err(Error::ParseModuleMetadata)?,
             )?);
         }
     }

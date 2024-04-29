@@ -1,7 +1,7 @@
 use crate::{
     doc_item::DocItem,
     glossary::{generate_module_glossary, ModuleGlossary},
-    module::{generate_module_documentation, AutodocsError, ModuleDocumentation},
+    module::{generate_module_documentation, Error, ModuleDocumentation},
 };
 
 pub(crate) const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
@@ -59,7 +59,7 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn export(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
+    pub fn export(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, Error> {
         generate_module_documentation(engine, &self)
     }
 
@@ -75,7 +75,7 @@ impl Options {
     pub fn export_with_glossary(
         &self,
         engine: &rhai::Engine,
-    ) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {
+    ) -> Result<(ModuleDocumentation, ModuleGlossary), Error> {
         Ok((
             generate_module_documentation(engine, self)?,
             generate_module_glossary(engine, self)?,
