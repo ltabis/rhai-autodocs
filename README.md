@@ -38,13 +38,8 @@ mod my_module {
         println!("Hello, World! {message}");
     }
 
-    /// A function that prints to stdout.
-    ///
-    /// # Args
-    ///
-    /// * message - append a message to the greeting. (optional)
-    ///
-    /// # rhai-autodocs:index:1
+    // NOTE: since this function is an overload of "hello_world", the documentation can
+    //       be written once on one of the functions, no need to write it multiple times.
     #[rhai_fn(global, name = "hello_world")]
     pub fn hello_world() {
         println!("Hello, World!");
