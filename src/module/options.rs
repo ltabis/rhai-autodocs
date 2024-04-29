@@ -26,9 +26,11 @@ pub struct Options {
     pub(crate) include_standard_packages: bool,
 }
 
-/// Create new options used to configure docs generation.
-pub fn options() -> Options {
-    Options::default()
+pub mod export {
+    /// Create new options used to configure docs generation.
+    pub fn options() -> super::Options {
+        super::Options::default()
+    }
 }
 
 impl Options {
@@ -66,7 +68,7 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn generate(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
+    pub fn export(self, engine: &rhai::Engine) -> Result<ModuleDocumentation, AutodocsError> {
         generate_module_documentation(engine, &self)
     }
 
@@ -79,7 +81,7 @@ impl Options {
     /// # Errors
     /// * Failed to generate function metadata as json.
     /// * Failed to parse module metadata.
-    pub fn generate_with_glossary(
+    pub fn export_with_glossary(
         &self,
         engine: &rhai::Engine,
     ) -> Result<(ModuleDocumentation, ModuleGlossary), AutodocsError> {

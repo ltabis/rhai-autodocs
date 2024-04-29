@@ -1,8 +1,6 @@
 pub mod error;
 pub mod options;
 
-pub use self::options::options;
-
 use self::{error::AutodocsError, options::Options};
 use crate::custom_types::CustomTypesMetadata;
 use crate::doc_item::DocItem;
@@ -47,7 +45,7 @@ pub(crate) struct ModuleMetadata {
 /// # Errors
 /// * Failed to generate function metadata as json.
 /// * Failed to parse module metadata.
-pub fn generate_module_documentation(
+pub(crate) fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
 ) -> Result<ModuleDocumentation, AutodocsError> {
@@ -145,9 +143,8 @@ pub(crate) fn group_functions(
 
 #[cfg(test)]
 mod test {
-    use crate::{generate_for_docusaurus, module::options::ItemsOrder};
+    use crate::{export, generate, module::options::ItemsOrder};
 
-    use super::*;
     use rhai::plugin::*;
 
     /// My own module.
@@ -180,16 +177,17 @@ mod test {
     fn test_order_by_index() {
         let mut engine = rhai::Engine::new();
 
+        // register custom functions and types ...
         engine.register_static_module("my_module", rhai::exported_module!(my_module).into());
 
-        // register custom functions and types ...
-        let docs = options::options()
+        // export documentation with option.
+        let docs = export::options()
             .include_standard_packages(false)
             .order_items_with(ItemsOrder::ByIndex)
-            .generate(&engine)
+            .export(&engine)
             .expect("failed to generate documentation");
 
-        let docs = generate_for_docusaurus(&docs).unwrap();
+        let docs = generate::docusaurus().build(&docs).unwrap();
 
         pretty_assertions::assert_eq!(
                 docs.get("global")

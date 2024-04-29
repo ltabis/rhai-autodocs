@@ -46,10 +46,10 @@ fn main() {
     let path = "./my-module.md";
 
     // register custom functions and types ...
-    let docs = rhai_autodocs::module::options::options()
+    let docs = rhai_autodocs::export::options()
         .include_standard_packages(false)
         .order_items_with(rhai_autodocs::module::options::ItemsOrder::ByIndex)
-        .generate(&engine)
+        .export(&engine)
         .expect("failed to generate documentation");
 
     // Write the documentation in a file.
