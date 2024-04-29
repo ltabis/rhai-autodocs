@@ -8,66 +8,110 @@ pub mod module;
 
 pub use glossary::ModuleGlossary;
 pub use module::{
-    options::{options, ItemsOrder, MarkdownProcessor, SectionFormat},
+    options::{export, ItemsOrder, MarkdownProcessor, SectionFormat},
     ModuleDocumentation,
 };
 use serde_json::json;
 
-/// Generate documentation for the docusaurus markdown processor.
-///
-/// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
-pub fn generate_for_docusaurus(
-    module: &ModuleDocumentation,
-) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
-    let mut hbs_registry = handlebars::Handlebars::new();
-
-    hbs_registry
-        .register_template_string(
-            "docusaurus-module",
-            include_str!("handlebars/docusaurus/header.hbs"),
-        )
-        .expect("template is valid");
-
-    // A partial used to keep indentation for mdx to render correctly.
-    hbs_registry
-        .register_partial("ContentPartial", "{{{content}}}")
-        .expect("partial is valid");
-
-    generate(module, "docusaurus-module", &hbs_registry)
+#[derive(Default)]
+pub struct DocusaurusOptions {
+    pub(crate) slug: Option<String>,
 }
 
-/// Generate documentation for the mdbook markdown processor.
-///
-/// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
-pub fn generate_for_mdbook(
-    module: &ModuleDocumentation,
-) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
-    let mut hbs_registry = handlebars::Handlebars::new();
+impl DocusaurusOptions {
+    /// Format the slug in the metadata section of the generated MDX document by concatenating the `slug` parameter with the module name.
+    ///
+    /// For example, if the documentation for a module called `my_module` is generated with
+    /// the slug `/docs/api/`, the slug set in the document will be `/docs/api/my_module`.
+    ///
+    /// By default the root `/` path is used.
+    pub fn with_slug(mut self, slug: &str) -> Self {
+        self.slug = Some(slug.to_string());
 
-    hbs_registry
-        .register_template_string(
-            "mdbook-module",
-            include_str!("handlebars/mdbook/header.hbs"),
+        self
+    }
+
+    /// Build MDX documentation for docusaurus from the given module documentation struct.
+    ///
+    /// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+    pub fn build(
+        self,
+        module: &ModuleDocumentation,
+    ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
+        let mut hbs_registry = handlebars::Handlebars::new();
+
+        hbs_registry
+            .register_template_string(
+                "docusaurus-module",
+                include_str!("handlebars/docusaurus/header.hbs"),
+            )
+            .expect("template is valid");
+
+        // A partial used to keep indentation for mdx to render correctly.
+        hbs_registry
+            .register_partial("ContentPartial", "{{{content}}}")
+            .expect("partial is valid");
+
+        generate(
+            module,
+            "docusaurus-module",
+            self.slug.as_deref(),
+            &hbs_registry,
         )
-        .expect("template is valid");
+    }
+}
 
-    // A partial used to keep indentation for md to render correctly.
-    hbs_registry
-        .register_partial("ContentPartial", "{{{content}}}")
-        .expect("partial is valid");
+#[derive(Default)]
+pub struct MDBookOptions;
 
-    generate(module, "mdbook-module", &hbs_registry)
+impl MDBookOptions {
+    /// Build html documentation for mdbook from the given module documentation struct.
+    ///
+    /// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+    pub fn build(
+        self,
+        module: &ModuleDocumentation,
+    ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
+        let mut hbs_registry = handlebars::Handlebars::new();
+
+        hbs_registry
+            .register_template_string(
+                "mdbook-module",
+                include_str!("handlebars/mdbook/header.hbs"),
+            )
+            .expect("template is valid");
+
+        // A partial used to keep indentation for md to render correctly.
+        hbs_registry
+            .register_partial("ContentPartial", "{{{content}}}")
+            .expect("partial is valid");
+
+        generate(module, "mdbook-module", None, &hbs_registry)
+    }
+}
+
+pub mod generate {
+    /// Create a new builder to generate documentation for docusaurus from a [`ModuleDocumentation`] object.
+    pub fn docusaurus() -> super::DocusaurusOptions {
+        super::DocusaurusOptions::default()
+    }
+
+    /// Create a new builder to generate documentation for mdbook from a [`ModuleDocumentation`] object.
+    pub fn mdbook() -> super::MDBookOptions {
+        super::MDBookOptions::default()
+    }
 }
 
 fn generate(
     module: &ModuleDocumentation,
     template: &str,
+    slug: Option<&str>,
     hbs_registry: &handlebars::Handlebars,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
     let data = json!({
         "title": module.name,
-        "slug": module.name,
+        "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
         "description": module.documentation,
         "namespace": module.namespace,
         "items": module.items,
@@ -79,7 +123,7 @@ fn generate(
     );
 
     for sub in &module.sub_modules {
-        documentation.extend(generate(sub, template, hbs_registry)?);
+        documentation.extend(generate(sub, template, slug, hbs_registry)?);
     }
 
     Ok(documentation)

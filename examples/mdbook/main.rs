@@ -1,5 +1,4 @@
 use rhai::plugin::*;
-use rhai_autodocs::generate_for_mdbook;
 
 /// My own module.
 #[export_module]
@@ -52,17 +51,17 @@ fn main() {
     engine.register_static_module("my_module", exported_module!(my_module).into());
 
     // register custom functions and types ...
-    let docs = rhai_autodocs::module::options()
+    let docs = rhai_autodocs::export::options()
         .include_standard_packages(false)
         .order_items_with(rhai_autodocs::module::options::ItemsOrder::ByIndex)
         .format_sections_with(rhai_autodocs::module::options::SectionFormat::Tabs)
-        .generate(&engine)
+        .export(&engine)
         .expect("failed to generate documentation");
 
     let path = "./examples/mdbook/mdbook-example/src";
 
     // Write the documentation in files.
-    for (name, doc) in generate_for_mdbook(&docs).unwrap() {
+    for (name, doc) in rhai_autodocs::generate::mdbook().build(&docs).unwrap() {
         std::fs::write(
             std::path::PathBuf::from_iter([path, &format!("{}.md", &name)]),
             doc,

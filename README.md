@@ -73,19 +73,29 @@ mod my_module {
 // where the documentation will be generated.
 let docs_path = std::env::var("DOCS_DIR").unwrap_or("target/docs".to_string());
 
-let mut engine = rhai::Engine::new();
-
-// We register the module defined in the previous code block for this example,
+// Create a new engine and register all modules that need to have documentation generated for them.
+// In this example, the module defined in the previous code block is registered into the engine,
 // but you could register other functions and types ...
+let mut engine = rhai::Engine::new();
 engine.register_static_module("my_module", exported_module!(my_module).into());
 
-let docs = rhai_autodocs::options()
+/// Export the documentation as a [`ModuleDocumentation`]. You could stop here and generate
+/// you own docs from this structure.
+let docs = rhai_autodocs::export::options()
     .include_standard_packages(false)
-    .generate(&engine)
+    .export(&engine)
     .expect("failed to generate documentation");
 
-// Write the documentation in a file, or output to stdout, etc.
-for (name, docs) in rhai_autodocs::generate_for_docusaurus(&docs).expect("failed to generate mdx for docusaurus") {
+/// Or you could use pre-defined templates for docusaurus or mdbook.
+/// Here, documentation is generated for docusaurus with some options.
+let mdx = rhai_autodocs::generate::docusaurus()
+    .with_slug("/docs/api")
+    .build(&docs)
+    .expect("failed to generate mdx for docusaurus");
+
+/// Iterate over the generated documentation for every modules.
+for (name, docs) in mdx {
+    // Write the documentation in a file, or output to stdout, or anything really.
     println!("docs for module {name}");
     println!("{docs}");
 }
