@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// Metadata exposed by Rhai for functions.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct FunctionMetadata {
+pub struct Metadata {
     pub access: String,
     pub base_hash: u128,
     pub full_hash: u128,
@@ -18,14 +18,14 @@ pub struct FunctionMetadata {
     pub doc_comments: Option<Vec<String>>,
 }
 
-impl FunctionMetadata {
+impl Metadata {
     /// Generate a pseudo-Rust definition of a rhai function.
     /// e.g. `fn my_func(a: int) -> ()`
     pub fn generate_function_definition(&self) -> Definition {
         Definition::new(
             &self.name,
             self.params.as_ref().unwrap_or(&vec![]),
-            self.return_type.clone(),
+            &self.return_type,
         )
     }
 }
@@ -86,14 +86,13 @@ fn remove_result(ty: &str) -> &str {
         .or_else(|| ty.split_once("RhaiResultOf<"))
         .map(|(_, ty)| ty);
 
-    match without_result {
-        Some(ty) => ty
-            .split_once(',')
-            .or_else(|| ty.split_once('>'))
-            .map(|(ty, _)| ty),
-        _ => None,
-    }
-    .map_or(ty, str::trim)
+    without_result
+        .and_then(|ty| {
+            ty.split_once(',')
+                .or_else(|| ty.split_once('>'))
+                .map(|(ty, _)| ty)
+        })
+        .map_or(ty, str::trim)
 }
 
 pub struct Arg {
@@ -154,20 +153,18 @@ impl Definition {
     pub fn new(
         name: &str,
         args: &[std::collections::HashMap<String, String>],
-        return_type: Option<String>,
+        return_type: &Option<String>,
     ) -> Self {
         fn get_arg(args: &[std::collections::HashMap<String, String>], index: usize) -> Arg {
-            args.get(index).map_or(Arg::unknown(), |def| Arg {
+            args.get(index).map_or_else(Arg::unknown, |def| Arg {
                 name: def
                     .get("name")
-                    .map(|n| n.as_str())
-                    .unwrap_or("_")
+                    .map_or("_", std::string::String::as_str)
                     .to_string(),
                 ty: def
                     .get("type")
                     .and_then(|ty| def_type_name(ty))
-                    .unwrap_or("?".to_string())
-                    .to_string(),
+                    .unwrap_or_else(|| "?".to_string()),
             })
         }
 
@@ -234,12 +231,12 @@ impl Definition {
                     "fn {}({})",
                     name,
                     args.iter()
-                        .map(|arg| arg.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect::<Vec<String>>()
                         .join(", ")
                 ) + return_type
                     .as_ref()
-                    .map_or(String::default(), |rt| format!(" -> {rt}"))
+                    .map_or_else(String::default, |rt| format!(" -> {rt}"))
                     .as_str()
             }
             Self::Operator {
@@ -292,7 +289,7 @@ impl Definition {
     }
 
     /// Return the function type of the definition as a string.
-    pub fn type_to_str(&self) -> &'static str {
+    pub const fn type_to_str(&self) -> &'static str {
         match self {
             Self::Function { .. } => "fn",
             Self::Operator { .. } => "op",
@@ -304,14 +301,11 @@ impl Definition {
     /// Full name of the definition.
     pub fn name(&self) -> String {
         match self {
-            crate::function::Definition::Function { name, .. }
-            | crate::function::Definition::Operator { name, .. } => name.clone(),
-            crate::function::Definition::Set { target, index, .. }
-            | crate::function::Definition::Get { target, index, .. } => {
+            Self::Function { name, .. } | Self::Operator { name, .. } => name.clone(),
+            Self::Set { target, index, .. } | Self::Get { target, index, .. } => {
                 format!("{}.{}", target.ty, index.name)
             }
-            crate::function::Definition::IndexGet { target, index, .. }
-            | crate::function::Definition::IndexSet { target, index, .. } => {
+            Self::IndexGet { target, index, .. } | Self::IndexSet { target, index, .. } => {
                 format!("{}.{}", target.ty, index.ty)
             }
         }

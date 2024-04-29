@@ -1,6 +1,6 @@
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct CustomTypesMetadata {
+pub struct Metadata {
     /// "Real" name of the type, with rust namespaces if any.
     pub type_name: String,
     /// Simple name for Rhai documentation.

@@ -1,6 +1,6 @@
 use crate::doc_item::DocItem;
-use crate::function::FunctionMetadata;
-use crate::{custom_types::CustomTypesMetadata, export::Options};
+use crate::function;
+use crate::{custom_types, export::Options};
 use serde::{Deserialize, Serialize};
 
 /// rhai-autodocs failed to export documentation for a module.
@@ -29,15 +29,15 @@ impl std::fmt::Display for Error {
     }
 }
 
-/// Rhai module documentation in markdown format.
+/// Rhai module documentation parsed from a definitions exported by a rhai engine.
 #[derive(Debug)]
-pub struct ModuleDocumentation {
+pub struct Documentation {
     /// Complete path to the module.
     pub namespace: String,
     /// Name of the module.
     pub name: String,
     /// Sub modules.
-    pub sub_modules: Vec<ModuleDocumentation>,
+    pub sub_modules: Vec<Documentation>,
     /// Module documentation as raw text.
     pub documentation: String,
     /// Documentation items found in the module.
@@ -51,9 +51,9 @@ pub(crate) struct ModuleMetadata {
     /// Optional documentation for the module.
     pub doc: Option<String>,
     /// Functions metadata, if any.
-    pub functions: Option<Vec<FunctionMetadata>>,
+    pub functions: Option<Vec<function::Metadata>>,
     /// Custom types metadata, if any.
-    pub custom_types: Option<Vec<CustomTypesMetadata>>,
+    pub custom_types: Option<Vec<custom_types::Metadata>>,
     /// Sub-modules, if any, stored as raw json values.
     pub modules: Option<serde_json::Map<String, serde_json::Value>>,
 }
@@ -70,7 +70,7 @@ pub(crate) struct ModuleMetadata {
 pub(crate) fn generate_module_documentation(
     engine: &rhai::Engine,
     options: &Options,
-) -> Result<ModuleDocumentation, Error> {
+) -> Result<Documentation, Error> {
     let json_fns = engine
         .gen_fn_metadata_to_json(options.include_standard_packages)
         .map_err(Error::ParseModuleMetadata)?;
@@ -86,7 +86,7 @@ fn generate_module_documentation_inner(
     namespace: Option<String>,
     name: impl Into<String>,
     metadata: &ModuleMetadata,
-) -> Result<ModuleDocumentation, Error> {
+) -> Result<Documentation, Error> {
     let name = name.into();
     let namespace = namespace.map_or(name.clone(), |namespace| namespace);
     // Format the module doc comments to make them
@@ -94,10 +94,10 @@ fn generate_module_documentation_inner(
     let documentation = metadata
         .doc
         .clone()
-        .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(dc)))
+        .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(&dc)))
         .unwrap_or_default();
 
-    let mut md = ModuleDocumentation {
+    let mut md = Documentation {
         namespace: namespace.clone(),
         name,
         documentation,
@@ -131,7 +131,7 @@ fn generate_module_documentation_inner(
         for (sub_module, value) in sub_modules {
             md.sub_modules.push(generate_module_documentation_inner(
                 options,
-                Some(format!("{}/{}", namespace, sub_module)),
+                Some(format!("{namespace}/{sub_module}")),
                 sub_module,
                 &serde_json::from_value::<ModuleMetadata>(value.clone())
                     .map_err(Error::ParseModuleMetadata)?,
@@ -143,12 +143,13 @@ fn generate_module_documentation_inner(
 }
 
 pub(crate) fn group_functions(
-    functions: &[FunctionMetadata],
-) -> std::collections::HashMap<String, Vec<FunctionMetadata>> {
-    let mut function_groups = std::collections::HashMap::<String, Vec<FunctionMetadata>>::default();
+    functions: &[function::Metadata],
+) -> std::collections::HashMap<String, Vec<function::Metadata>> {
+    let mut function_groups =
+        std::collections::HashMap::<String, Vec<function::Metadata>>::default();
 
     // Rhai function can be polymorphes, so we group them by name.
-    functions.iter().for_each(|metadata| {
+    for metadata in functions {
         // Remove getter/setter prefixes to group them and indexers.
         let name = metadata.generate_function_definition().name();
 
@@ -158,9 +159,174 @@ pub(crate) fn group_functions(
                 function_groups.insert(name.to_string(), vec![metadata.clone()]);
             }
         };
-    });
+    }
 
     function_groups
+}
+
+/// Glossary of all function for a module and it's submodules.
+#[derive(Debug)]
+pub struct Glossary {
+    /// Formatted function signatures by submodules.
+    pub content: String,
+}
+
+/// Generate documentation based on an engine instance and a glossary of all functions.
+/// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
+///
+/// # CAUTION
+///
+/// This only works for docusaurus at the moment.
+///
+/// # Result
+/// * A vector of documented modules.
+///
+/// # Errors
+/// * Failed to generate function metadata as json.
+/// * Failed to parse module metadata.
+pub(crate) fn generate_module_glossary(
+    engine: &rhai::Engine,
+    options: &Options,
+) -> Result<Glossary, Error> {
+    let json_fns = engine
+        .gen_fn_metadata_to_json(options.include_standard_packages)
+        .map_err(Error::ParseModuleMetadata)?;
+
+    let metadata =
+        serde_json::from_str::<ModuleMetadata>(&json_fns).map_err(Error::ParseModuleMetadata)?;
+
+    generate_module_glossary_inner(options, None, "global", &metadata)
+}
+
+#[allow(clippy::too_many_lines)]
+fn generate_module_glossary_inner(
+    options: &Options,
+    namespace: Option<String>,
+    name: impl Into<String>,
+    metadata: &ModuleMetadata,
+) -> Result<Glossary, Error> {
+    fn make_highlight(color: &str, item_type: &str, definition: &str) -> String {
+        format!("- <Highlight color=\"{color}\">{item_type}</Highlight> <code>{{\"{definition}\"}}</code>\n",)
+    }
+
+    let name = name.into();
+    let namespace = namespace.map_or(name.clone(), |namespace| namespace);
+    let mut items = if let Some(types) = &metadata.custom_types {
+        types
+            .iter()
+            .map(|metadata| DocItem::new_custom_type(metadata.clone(), options))
+            .collect::<Result<Vec<_>, Error>>()?
+    } else {
+        vec![]
+    };
+
+    items.extend(if let Some(functions) = &metadata.functions {
+        let groups = group_functions(functions);
+        groups
+            .iter()
+            .map(|(name, metadata)| DocItem::new_function(metadata, name, options))
+            .collect::<Result<Vec<_>, Error>>()?
+    } else {
+        vec![]
+    });
+
+    // Remove ignored documentation.
+    let items = items.into_iter().flatten().collect::<Vec<DocItem>>();
+
+    let items = options.items_order.order_items(items);
+
+    let signatures = {
+        let mut signatures = String::default();
+
+        for item in &items {
+            match item {
+                DocItem::Function { metadata, .. } => {
+                    for m in metadata {
+                        let root_definition = m.generate_function_definition();
+
+                        let serialized = root_definition.display();
+                        // FIXME: this only works for docusaurus.
+                        // TODO: customize colors.
+                        signatures += &if serialized.starts_with("op ") {
+                            make_highlight(
+                                "#16c6f3",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("op "),
+                            )
+                        } else if serialized.starts_with("get ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("get "),
+                            )
+                        } else if serialized.starts_with("set ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("set "),
+                            )
+                        } else if serialized.starts_with("index get ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("index get "),
+                            )
+                        } else if serialized.starts_with("index set ") {
+                            make_highlight(
+                                "#25c2a0",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("index set "),
+                            )
+                        } else {
+                            make_highlight(
+                                "#C6cacb",
+                                root_definition.type_to_str(),
+                                serialized.trim_start_matches("fn "),
+                            )
+                        }
+                    }
+                }
+                DocItem::CustomType { metadata, .. } => {
+                    signatures += &make_highlight("#C6cacb", "type", &metadata.display_name);
+                }
+            }
+        }
+
+        signatures
+    };
+
+    // FIXME: this only works for docusaurus.
+    let mut mg = Glossary {
+        content: if name == "global" {
+            format!(
+                "{} \n\n### {}\n{}",
+                include_str!("components/highlight.js"),
+                name,
+                signatures
+            )
+        } else {
+            format!("### {name}\n{signatures}")
+        },
+    };
+
+    // Generate signatures for each submodule. (if any)
+    if let Some(sub_modules) = &metadata.modules {
+        for (sub_module, value) in sub_modules {
+            mg.content.push_str(&{
+                let mg = generate_module_glossary_inner(
+                    options,
+                    Some(format!("{namespace}/{sub_module}")),
+                    sub_module,
+                    &serde_json::from_value::<ModuleMetadata>(value.clone())
+                        .map_err(Error::ParseModuleMetadata)?,
+                )?;
+
+                mg.content
+            });
+        }
+    }
+
+    Ok(mg)
 }
 
 #[cfg(test)]
@@ -184,13 +350,13 @@ mod test {
         ///
         /// # rhai-autodocs:index:2
         #[rhai_fn(global)]
-        pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
+        pub const fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
             a + b
         }
 
         /// This ust be hidden.
         #[rhai_fn(global)]
-        pub fn hide(a: rhai::INT, b: rhai::INT) -> rhai::INT {
+        pub const fn hide(a: rhai::INT, b: rhai::INT) -> rhai::INT {
             a + b
         }
     }
