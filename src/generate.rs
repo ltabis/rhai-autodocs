@@ -1,6 +1,6 @@
 use serde_json::json;
 
-use crate::Documentation;
+use crate::module::Documentation;
 
 #[derive(Default)]
 pub struct DocusaurusOptions {
