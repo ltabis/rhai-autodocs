@@ -6,16 +6,6 @@ use crate::{
 
 pub(crate) const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
 
-/// Types of markdown processor where the documentation generated will be hosted.
-#[derive(Default)]
-pub enum MarkdownProcessor {
-    /// Generate documentation for mdbook: <https://rust-lang.github.io/mdBook/>
-    MdBook,
-    /// Generate documentation for docusaurus. <https://docusaurus.io/>
-    #[default]
-    Docusaurus,
-}
-
 #[derive(Default)]
 /// Options to configure documentation generation.
 pub struct Options {
