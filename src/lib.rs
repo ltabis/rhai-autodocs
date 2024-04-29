@@ -111,7 +111,7 @@ fn generate(
     let mut documentation = std::collections::HashMap::default();
     let data = json!({
         "title": module.name,
-        "slug": slug.unwrap_or(&module.name),
+        "slug": slug.map_or(module.name.clone(), |slug| format!("{}/{}", slug, module.name)),
         "description": module.documentation,
         "namespace": module.namespace,
         "items": module.items,
