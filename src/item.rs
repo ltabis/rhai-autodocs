@@ -8,7 +8,7 @@ use serde::ser::SerializeStruct;
 
 /// Generic representation of documentation for a specific item. (a function, a custom type, etc.)
 #[derive(Debug, Clone)]
-pub enum DocItem {
+pub enum Item {
     Function {
         root_metadata: function::Metadata,
         metadata: Vec<function::Metadata>,
@@ -21,7 +21,7 @@ pub enum DocItem {
     },
 }
 
-impl serde::Serialize for DocItem {
+impl serde::Serialize for Item {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -98,7 +98,7 @@ impl Section {
                     if !first {
                         sections.push(Self {
                             name: std::mem::take(&mut current_name),
-                            body: DocItem::format_comments(&current_body[..]),
+                            body: Item::format_comments(&current_body[..]),
                         });
                     }
 
@@ -119,7 +119,7 @@ impl Section {
     }
 }
 
-impl DocItem {
+impl Item {
     pub(crate) fn new_function(
         metadata: &[function::Metadata],
         name: &str,
@@ -261,7 +261,7 @@ pub mod test {
     #[test]
     fn test_remove_test_code_simple() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r"
 # Not removed.
 ```
@@ -288,7 +288,7 @@ do something else ...
     #[test]
     fn test_remove_test_code_multiple_blocks() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r"
 ```ignore
 block 1
@@ -324,7 +324,7 @@ doe
     #[test]
     fn test_remove_test_code_with_rhai_map() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r#"
 ```rhai
 #{

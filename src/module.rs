@@ -1,5 +1,5 @@
-use crate::doc_item::DocItem;
 use crate::function;
+use crate::item::Item;
 use crate::{custom_types, export::Options};
 use serde::{Deserialize, Serialize};
 
@@ -41,7 +41,7 @@ pub struct Documentation {
     /// Module documentation as raw text.
     pub documentation: String,
     /// Documentation items found in the module.
-    pub items: Vec<DocItem>,
+    pub items: Vec<Item>,
 }
 
 /// Intermediatory representation of the documentation.
@@ -94,7 +94,7 @@ fn generate_module_documentation_inner(
     let documentation = metadata
         .doc
         .clone()
-        .map(|dc| DocItem::remove_test_code(&DocItem::fmt_doc_comments(&dc)))
+        .map(|dc| Item::remove_test_code(&Item::fmt_doc_comments(&dc)))
         .unwrap_or_default();
 
     let mut md = Documentation {
@@ -109,20 +109,20 @@ fn generate_module_documentation_inner(
 
     if let Some(types) = &metadata.custom_types {
         for ty in types {
-            items.push(DocItem::new_custom_type(ty.clone(), options)?);
+            items.push(Item::new_custom_type(ty.clone(), options)?);
         }
     }
 
     if let Some(functions) = &metadata.functions {
         for (name, polymorphisms) in group_functions(functions) {
-            if let Ok(doc_item) = DocItem::new_function(&polymorphisms[..], &name, options) {
+            if let Ok(doc_item) = Item::new_function(&polymorphisms[..], &name, options) {
                 items.push(doc_item);
             }
         }
     }
 
     // Remove ignored documentation.
-    let items = items.into_iter().flatten().collect::<Vec<DocItem>>();
+    let items = items.into_iter().flatten().collect::<Vec<Item>>();
 
     md.items = options.items_order.order_items(items);
 
@@ -214,7 +214,7 @@ fn generate_module_glossary_inner(
     let mut items = if let Some(types) = &metadata.custom_types {
         types
             .iter()
-            .map(|metadata| DocItem::new_custom_type(metadata.clone(), options))
+            .map(|metadata| Item::new_custom_type(metadata.clone(), options))
             .collect::<Result<Vec<_>, Error>>()?
     } else {
         vec![]
@@ -224,14 +224,14 @@ fn generate_module_glossary_inner(
         let groups = group_functions(functions);
         groups
             .iter()
-            .map(|(name, metadata)| DocItem::new_function(metadata, name, options))
+            .map(|(name, metadata)| Item::new_function(metadata, name, options))
             .collect::<Result<Vec<_>, Error>>()?
     } else {
         vec![]
     });
 
     // Remove ignored documentation.
-    let items = items.into_iter().flatten().collect::<Vec<DocItem>>();
+    let items = items.into_iter().flatten().collect::<Vec<Item>>();
 
     let items = options.items_order.order_items(items);
 
@@ -240,7 +240,7 @@ fn generate_module_glossary_inner(
 
         for item in &items {
             match item {
-                DocItem::Function { metadata, .. } => {
+                Item::Function { metadata, .. } => {
                     for m in metadata {
                         let root_definition = m.generate_function_definition();
 
@@ -286,7 +286,7 @@ fn generate_module_glossary_inner(
                         }
                     }
                 }
-                DocItem::CustomType { metadata, .. } => {
+                Item::CustomType { metadata, .. } => {
                     signatures += &make_highlight("#C6cacb", "type", &metadata.display_name);
                 }
             }

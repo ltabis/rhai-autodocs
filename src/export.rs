@@ -1,5 +1,5 @@
 use crate::{
-    doc_item::DocItem,
+    item::Item,
     module::{
         generate_module_documentation, generate_module_glossary, Documentation, Error, Glossary,
     },
@@ -115,14 +115,14 @@ pub enum ItemsOrder {
 
 impl ItemsOrder {
     /// Order [`DocItem`]s following the given option.
-    pub(crate) fn order_items(&'_ self, mut items: Vec<DocItem>) -> Vec<DocItem> {
+    pub(crate) fn order_items(&'_ self, mut items: Vec<Item>) -> Vec<Item> {
         match self {
             Self::Alphabetical => {
                 items.sort_by(|i1, i2| i1.name().cmp(i2.name()));
                 items
             }
             Self::ByIndex => {
-                items.sort_by_key(DocItem::index);
+                items.sort_by_key(Item::index);
                 items
             }
         }
