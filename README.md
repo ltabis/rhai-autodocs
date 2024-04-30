@@ -9,9 +9,11 @@ Published with [Docusaurus](https://docusaurus.io/).
 
 ## Features
 
-- Output native Rust Rhai function and custom types documentation as Markdown with HTML and Docusaurus with MDX.
-- Function ordering using the `# rhai-autodocs:index:x` directive in your docs.
-- Rust docs 'sections' (`# Section` in markdown) displayed with tabs.
+- Export native Rust Rhai function and custom types documentation to a simple struct.
+- Generate documentation as Markdown with HTML or MDX, for [Mdbook](https://rust-lang.github.io/mdBook/index.html) and [Docusaurus](https://docusaurus.io/) respectivly.
+- Order functions in your docs with the `# rhai-autodocs:index:x` directive.
+- Split your docs in 'sections' using the `#` character in your docs that will be rendered as tabs.
+- Generate glossaries linking to the function definitions.
 
 ## How to use
 
