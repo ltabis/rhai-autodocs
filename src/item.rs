@@ -8,7 +8,7 @@ use serde::ser::SerializeStruct;
 
 /// Generic representation of documentation for a specific item. (a function, a custom type, etc.)
 #[derive(Debug, Clone)]
-pub enum DocItem {
+pub enum Item {
     Function {
         root_metadata: function::Metadata,
         metadata: Vec<function::Metadata>,
@@ -21,7 +21,7 @@ pub enum DocItem {
     },
 }
 
-impl serde::Serialize for DocItem {
+impl serde::Serialize for Item {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -38,6 +38,7 @@ impl serde::Serialize for DocItem {
                     "type",
                     root_metadata.generate_function_definition().type_to_str(),
                 )?;
+                state.serialize_field("heading_id", &self.heading_id())?;
                 state.serialize_field("name", name)?;
                 state.serialize_field(
                     "signatures",
@@ -62,6 +63,7 @@ impl serde::Serialize for DocItem {
             Self::CustomType { metadata, .. } => {
                 let mut state = serializer.serialize_struct("item", 2)?;
                 state.serialize_field("name", &metadata.display_name)?;
+                state.serialize_field("heading_id", &self.heading_id())?;
                 state.serialize_field(
                     "sections",
                     &Section::extract_sections(
@@ -74,52 +76,7 @@ impl serde::Serialize for DocItem {
     }
 }
 
-#[derive(Default, Clone, serde::Serialize)]
-struct Section {
-    pub name: String,
-    pub body: String,
-}
-
-impl Section {
-    fn extract_sections(docs: &str) -> Vec<Self> {
-        let mut sections = vec![];
-        let mut current_name = "Description".to_string();
-        let mut current_body = vec![];
-        let mut in_code_block = false;
-
-        // Start by extracting all sections from markdown comments.
-        docs.lines().fold(true, |first, line| {
-            if line.split_once("```").is_some() {
-                in_code_block = !in_code_block;
-            }
-
-            match line.split_once("# ") {
-                Some((_prefix, name)) if !in_code_block => {
-                    if !first {
-                        sections.push(Self {
-                            name: std::mem::take(&mut current_name),
-                            body: DocItem::format_comments(&current_body[..]),
-                        });
-                    }
-
-                    current_name = name.to_string();
-                    current_body = vec![];
-                }
-                // Do not append lines of code that starts with the '#' token,
-                // which are removed on rust docs automatically.
-                Some(_) => {}
-                // Append regular lines.
-                None => current_body.push(format!("{line}\n")),
-            };
-
-            false
-        });
-
-        sections
-    }
-}
-
-impl DocItem {
+impl Item {
     pub(crate) fn new_function(
         metadata: &[function::Metadata],
         name: &str,
@@ -184,6 +141,20 @@ impl DocItem {
             Self::CustomType { metadata, .. } => metadata.display_name.as_str(),
             Self::Function { name, .. } => name,
         }
+    }
+
+    /// Generate a heading id for mardown, using the type and name of the item.
+    #[must_use]
+    pub fn heading_id(&self) -> String {
+        let prefix = match self {
+            Self::Function { root_metadata, .. } => root_metadata
+                .generate_function_definition()
+                .type_to_str()
+                .replace(['/', ' '], ""),
+            Self::CustomType { .. } => "type".to_string(),
+        };
+
+        format!("{prefix}-{}", self.name())
     }
 
     /// Find the order index of the item by searching for the index pattern.
@@ -254,6 +225,51 @@ impl DocItem {
     }
 }
 
+#[derive(Default, Clone, serde::Serialize)]
+struct Section {
+    pub name: String,
+    pub body: String,
+}
+
+impl Section {
+    fn extract_sections(docs: &str) -> Vec<Self> {
+        let mut sections = vec![];
+        let mut current_name = "Description".to_string();
+        let mut current_body = vec![];
+        let mut in_code_block = false;
+
+        // Start by extracting all sections from markdown comments.
+        docs.lines().fold(true, |first, line| {
+            if line.split_once("```").is_some() {
+                in_code_block = !in_code_block;
+            }
+
+            match line.split_once("# ") {
+                Some((_prefix, name)) if !in_code_block => {
+                    if !first {
+                        sections.push(Self {
+                            name: std::mem::take(&mut current_name),
+                            body: Item::format_comments(&current_body[..]),
+                        });
+                    }
+
+                    current_name = name.to_string();
+                    current_body = vec![];
+                }
+                // Do not append lines of code that starts with the '#' token,
+                // which are removed on rust docs automatically.
+                Some(_) => {}
+                // Append regular lines.
+                None => current_body.push(format!("{line}\n")),
+            };
+
+            false
+        });
+
+        sections
+    }
+}
+
 #[cfg(test)]
 pub mod test {
     use super::*;
@@ -261,7 +277,7 @@ pub mod test {
     #[test]
     fn test_remove_test_code_simple() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r"
 # Not removed.
 ```
@@ -288,7 +304,7 @@ do something else ...
     #[test]
     fn test_remove_test_code_multiple_blocks() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r"
 ```ignore
 block 1
@@ -324,7 +340,7 @@ doe
     #[test]
     fn test_remove_test_code_with_rhai_map() {
         pretty_assertions::assert_eq!(
-            DocItem::remove_test_code(
+            Item::remove_test_code(
                 r#"
 ```rhai
 #{

@@ -1,6 +1,18 @@
 use serde_json::json;
 
-use crate::module::Documentation;
+use crate::{item::Item, module::Documentation};
+
+/// Glossary of all function for a module and it's submodules.
+#[derive(Debug)]
+pub struct Glossary {
+    /// Formatted function signatures by submodules.
+    pub content: String,
+}
+
+pub const GLOSSARY_COLOR_FN: &str = "#C6cacb";
+pub const GLOSSARY_COLOR_OP: &str = "#16c6f3";
+pub const GLOSSARY_COLOR_GETSET: &str = "#25c2a0";
+pub const GLOSSARY_COLOR_INDEX: &str = "#25c2a0";
 
 #[derive(Default)]
 pub struct DocusaurusOptions {
@@ -23,8 +35,10 @@ impl DocusaurusOptions {
 
     /// Build MDX documentation for docusaurus from the given module documentation struct.
     ///
-    /// Returns a hashmap with the name of the module as the key and its raw documentation as the value.
+    /// # Return
     ///
+    /// A hashmap with the name of the module as the key and its raw documentation as the value.
+    //
     /// # Errors
     ///
     /// Handlebar failed to render the variables in the module documentation.
@@ -38,7 +52,7 @@ impl DocusaurusOptions {
         hbs_registry
             .register_template_string(
                 "docusaurus-module",
-                include_str!("handlebars/docusaurus/header.hbs"),
+                include_str!("handlebars/docusaurus/module.hbs"),
             )
             .expect("template is valid");
 
@@ -63,6 +77,109 @@ pub fn docusaurus() -> DocusaurusOptions {
 }
 
 #[derive(Default)]
+pub struct DocusaurusGlossaryOptions {
+    slug: Option<String>,
+}
+
+impl DocusaurusGlossaryOptions {
+    /// Format the slug in the metadata section of the generated MDX document.
+    ///
+    /// By default the root `/glossary` path is used.
+    #[must_use]
+    pub fn with_slug(mut self, slug: &str) -> Self {
+        self.slug = Some(slug.to_string());
+
+        self
+    }
+
+    /// Build MDX documentation for docusaurus from the given module documentation struct, with
+    /// a glossary that group all functions from all submodules.
+    ///
+    /// # Return
+    ///
+    /// A glossary and a hashmap with the name of the module as the key and its raw documentation as the value.
+    ///
+    /// # Errors
+    ///
+    /// Handlebar failed to render the variables in the module documentation.
+    #[allow(clippy::missing_panics_doc)]
+    pub fn generate(self, module: &Documentation) -> Result<String, handlebars::RenderError> {
+        let mut hbs = handlebars::Handlebars::new();
+
+        hbs.register_template_string(
+            "docusaurus-glossary",
+            include_str!("handlebars/docusaurus/glossary.hbs"),
+        )
+        .expect("template is valid");
+
+        self.generate_inner(&hbs, true, module)
+    }
+
+    fn generate_inner(
+        &self,
+        hbs: &handlebars::Handlebars<'_>,
+        is_root: bool,
+        module: &Documentation,
+    ) -> Result<String, handlebars::RenderError> {
+        let mut flatten_items = Vec::default();
+
+        for item in &module.items {
+            match item {
+                Item::Function { metadata, .. } => {
+                    for m in metadata {
+                        let definition = m.generate_function_definition();
+                        let serialized = definition.display();
+                        let ty = definition.type_to_str();
+                        let color = match ty {
+                            "op" => GLOSSARY_COLOR_OP,
+                            "get/set" => GLOSSARY_COLOR_GETSET,
+                            "index get/set" => GLOSSARY_COLOR_INDEX,
+                            _ => GLOSSARY_COLOR_FN,
+                        };
+
+                        flatten_items.push(json!({
+                            "color": color,
+                            "type": ty,
+                            "definition": serialized.trim_start_matches(ty).trim(),
+                            "heading_id": item.heading_id(),
+                        }));
+                    }
+                }
+                Item::CustomType { metadata, .. } => {
+                    flatten_items.push(json!({
+                        "color": GLOSSARY_COLOR_FN,
+                        "type": "type",
+                        "definition": metadata.display_name,
+                        "heading_id": item.heading_id(),
+                    }));
+                }
+            }
+        }
+
+        let data = json!({
+            "title": module.name,
+            "root": is_root,
+            "slug": self.slug.clone().unwrap_or_default(),
+            "items": flatten_items,
+        });
+
+        let mut glossary = hbs.render("docusaurus-glossary", &data)?;
+
+        for module in &module.sub_modules {
+            glossary += self.generate_inner(hbs, false, module)?.as_str();
+        }
+
+        Ok(glossary)
+    }
+}
+
+/// Create a new builder to generate a function glossary for docusaurus from a [`super::module::Documentation`] object.
+#[must_use]
+pub fn docusaurus_glossary() -> DocusaurusGlossaryOptions {
+    DocusaurusGlossaryOptions::default()
+}
+
+#[derive(Default)]
 pub struct MDBookOptions;
 
 impl MDBookOptions {
@@ -83,7 +200,7 @@ impl MDBookOptions {
         hbs_registry
             .register_template_string(
                 "mdbook-module",
-                include_str!("handlebars/mdbook/header.hbs"),
+                include_str!("handlebars/mdbook/module.hbs"),
             )
             .expect("template is valid");
 
