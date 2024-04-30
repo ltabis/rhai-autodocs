@@ -9,9 +9,11 @@ Published with [Docusaurus](https://docusaurus.io/).
 
 ## Features
 
-- Output native Rust Rhai function and custom types documentation as Markdown with HTML and Docusaurus with MDX.
-- Function ordering using the `# rhai-autodocs:index:x` directive in your docs.
-- Rust docs 'sections' (`# Section` in markdown) displayed with tabs.
+- Export native Rust Rhai function and custom types documentation to a simple struct.
+- Generate documentation as Markdown with HTML or MDX, for [Mdbook](https://rust-lang.github.io/mdBook/index.html) and [Docusaurus](https://docusaurus.io/) respectivly.
+- Order functions in your docs with the `# rhai-autodocs:index:x` directive.
+- Split your docs in 'sections' using the `#` character in your docs that will be rendered as tabs.
+- Generate glossaries linking to the function definitions.
 
 ## How to use
 
@@ -97,6 +99,9 @@ for (name, docs) in mdx {
 }
 ```
 
-You need to import the `styles/default.css` file and `src/tabs.js` script for everything to work correctly using the [mdbook](https://rust-lang.github.io/mdBook/index.html) generation. (You can of course override the styles and javascript code if you wish)
+For more details, check out the [examples](./examples) folder.
 
-For more details, see the examples.
+## Generating your own documentation
+
+You can pretty much use any templating system to generate documentation. However, this repository already generates documents based on [handlebars](https://handlebarsjs.com/)
+with the [handlebars-rust crate](https://github.com/sunng87/handlebars-rust) for docusaurus and mdbook. You can check the [template folder](./src/handlebars) to get inspired.
