@@ -29,7 +29,7 @@ impl DocusaurusOptions {
     ///
     /// Handlebar failed to render the variables in the module documentation.
     #[allow(clippy::missing_panics_doc)]
-    pub fn build(
+    pub fn generate(
         self,
         module: &Documentation,
     ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
@@ -74,7 +74,7 @@ impl MDBookOptions {
     ///
     /// Handlebar failed to render the variables in the module documentation.
     #[allow(clippy::missing_panics_doc)]
-    pub fn build(
+    pub fn generate(
         self,
         module: &Documentation,
     ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {

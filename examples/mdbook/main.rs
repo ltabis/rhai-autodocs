@@ -61,7 +61,7 @@ fn main() {
     let path = "./examples/mdbook/mdbook-example/src";
 
     // Write the documentation in files.
-    for (name, doc) in rhai_autodocs::generate::mdbook().build(&docs).unwrap() {
+    for (name, doc) in rhai_autodocs::generate::mdbook().generate(&docs).unwrap() {
         std::fs::write(
             std::path::PathBuf::from_iter([path, &format!("{}.md", &name)]),
             doc,

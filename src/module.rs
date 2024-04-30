@@ -375,7 +375,7 @@ mod test {
             .export(&engine)
             .expect("failed to generate documentation");
 
-        let docs = crate::generate::docusaurus().build(&docs).unwrap();
+        let docs = crate::generate::docusaurus().generate(&docs).unwrap();
 
         pretty_assertions::assert_eq!(
                 docs.get("global")

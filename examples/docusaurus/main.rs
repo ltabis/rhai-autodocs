@@ -156,7 +156,7 @@ fn main() {
     // Write the documentation in files for docusaurus.
     for (name, doc) in rhai_autodocs::generate::docusaurus()
         .with_slug("/docs/api")
-        .build(&docs)
+        .generate(&docs)
         .unwrap()
     {
         std::fs::write(
