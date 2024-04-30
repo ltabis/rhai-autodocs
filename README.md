@@ -86,7 +86,7 @@ let docs = rhai_autodocs::export::options()
 /// Here, documentation is generated for docusaurus with some options.
 let mdx = rhai_autodocs::generate::docusaurus()
     .with_slug("/docs/api")
-    .build(&docs)
+    .generate(&docs)
     .expect("failed to generate mdx for docusaurus");
 
 /// Iterate over the generated documentation for every modules.

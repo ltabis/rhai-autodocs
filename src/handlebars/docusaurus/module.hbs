@@ -13,7 +13,7 @@ import TabItem from '@theme/TabItem';
 {{!-- Render all module items (custom types and functions) --}}
 {{#each items as |item|}}
 
-## <code>{{#if item.type}}{{item.type}}{{else}}type{{/if}}</code> {{item.name}}
+## <code>{{#if item.type}}{{item.type}}{{else}}type{{/if}}</code> {{item.name}} {#{{item.heading_id}}}
 
 {{!-- Render function signatures if not a type --}}
 {{#if item.type}}
