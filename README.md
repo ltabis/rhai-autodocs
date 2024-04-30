@@ -99,6 +99,9 @@ for (name, docs) in mdx {
 }
 ```
 
-You need to import the `styles/default.css` file and `src/tabs.js` script for everything to work correctly using the [mdbook](https://rust-lang.github.io/mdBook/index.html) generation. (You can of course override the styles and javascript code if you wish)
+For more details, check out the [examples](./examples) folder.
 
-For more details, see the examples.
+## Generating your own documentation
+
+You can pretty much use any templating system to generate documentation. However, this repository already generates documents based on [handlebars](https://handlebarsjs.com/)
+for docusaurus and mdbook, you can check the [template folder](./src/handlebars) to get inspired.
