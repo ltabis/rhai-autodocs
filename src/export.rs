@@ -1,8 +1,6 @@
 use crate::{
     item::Item,
-    module::{
-        generate_module_documentation, generate_module_glossary, Documentation, Error, Glossary,
-    },
+    module::{generate_module_documentation, Documentation, Error},
 };
 
 pub(crate) const RHAI_ITEM_INDEX_PATTERN: &str = "# rhai-autodocs:index:";
@@ -55,25 +53,6 @@ impl Options {
     /// * Failed to parse module metadata.
     pub fn export(self, engine: &rhai::Engine) -> Result<Documentation, Error> {
         generate_module_documentation(engine, &self)
-    }
-
-    /// Generate documentation based on an engine instance and a list of all functions signature.
-    /// Make sure all the functions, operators, plugins, etc. are registered inside this instance.
-    ///
-    /// # Result
-    /// * A vector of documented modules and the glossary.
-    ///
-    /// # Errors
-    /// * Failed to generate function metadata as json.
-    /// * Failed to parse module metadata.
-    pub fn export_with_glossary(
-        &self,
-        engine: &rhai::Engine,
-    ) -> Result<(Documentation, Glossary), Error> {
-        Ok((
-            generate_module_documentation(engine, self)?,
-            generate_module_glossary(engine, self)?,
-        ))
     }
 }
 
