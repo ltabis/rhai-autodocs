@@ -143,7 +143,7 @@ fn main() {
     engine.register_static_module("my_module", exported_module!(my_module).into());
     engine.build_type::<DocumentedType>();
 
-    // Generate documentation structure.
+    // Export documentation structure.
     let docs = rhai_autodocs::export::options()
         .include_standard_packages(false)
         .order_items_with(rhai_autodocs::export::ItemsOrder::ByIndex)
@@ -152,6 +152,18 @@ fn main() {
         .expect("failed to generate documentation");
 
     let path = "./examples/docusaurus/docusaurus-example/docs/rhai-autodocs";
+
+    // Generate a glossary from the exported docs.
+    let glossary = rhai_autodocs::generate::docusaurus_glossary()
+        .with_slug("/docs/api")
+        .generate(&docs)
+        .unwrap();
+
+    std::fs::write(
+        std::path::PathBuf::from_iter([path, &format!("glossary.mdx")]),
+        glossary,
+    )
+    .expect("failed to write glossary");
 
     // Write the documentation in files for docusaurus.
     for (name, doc) in rhai_autodocs::generate::docusaurus()
