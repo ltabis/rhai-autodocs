@@ -1,14 +1,15 @@
 {{!-- Setup headers and necessary imports for root module --}}
 {{#if root}}
 ---
-title: glossary
-slug: {{slug}}
+title: Glossary
+slug: {{slug}}/glossary
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import Link from '@docusaurus/Link';
 
-const Highlight = ({ children, color }) => (
+export const Highlight = ({ children, color }) => (
 <span style=\{{ backgroundColor: color, borderRadius: '2px' , color: '#000' , padding: '0.2rem' }}>
     {children}
 </span>
@@ -18,5 +19,5 @@ const Highlight = ({ children, color }) => (
 ## {{title}}
 
 {{#each items as |item|}}
-- <Highlight color="{{item.color}}">{{item.type}}</Highlight> <code>"{{item.definition}}"</code>
+- <Link to="/docs{{../slug}}/{{../title}}#{{item.heading_id}}"> <Highlight color="{{item.color}}">{{item.type}}</Highlight> <code>{{{item.definition}}}</code></Link>
 {{/each}}

@@ -38,6 +38,7 @@ impl serde::Serialize for Item {
                     "type",
                     root_metadata.generate_function_definition().type_to_str(),
                 )?;
+                state.serialize_field("heading_id", &self.heading_id())?;
                 state.serialize_field("name", name)?;
                 state.serialize_field(
                     "signatures",
@@ -62,6 +63,7 @@ impl serde::Serialize for Item {
             Self::CustomType { metadata, .. } => {
                 let mut state = serializer.serialize_struct("item", 2)?;
                 state.serialize_field("name", &metadata.display_name)?;
+                state.serialize_field("heading_id", &self.heading_id())?;
                 state.serialize_field(
                     "sections",
                     &Section::extract_sections(
@@ -139,6 +141,21 @@ impl Item {
             Self::CustomType { metadata, .. } => metadata.display_name.as_str(),
             Self::Function { name, .. } => name,
         }
+    }
+
+    /// Generate a heading id for mardown, using the type and name of the item.
+    #[must_use]
+    pub fn heading_id(&self) -> String {
+        let prefix = match self {
+            Item::Function { root_metadata, .. } => root_metadata
+                .generate_function_definition()
+                .type_to_str()
+                .replace("/", "")
+                .replace(" ", ""),
+            Item::CustomType { .. } => "type".to_string(),
+        };
+
+        format!("{prefix}-{}", self.name())
     }
 
     /// Find the order index of the item by searching for the index pattern.

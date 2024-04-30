@@ -140,7 +140,8 @@ impl DocusaurusGlossaryOptions {
                         flatten_items.push(json!({
                             "color": color,
                             "type": ty,
-                            "definition": serialized.trim_start_matches(ty),
+                            "definition": serialized.trim_start_matches(ty).trim(),
+                            "heading_id": item.heading_id(),
                         }));
                     }
                 }
@@ -149,6 +150,7 @@ impl DocusaurusGlossaryOptions {
                         "color": GLOSSARY_COLOR_FN,
                         "type": "type",
                         "definition": metadata.display_name,
+                        "heading_id": item.heading_id(),
                     }));
                 }
             }
@@ -157,7 +159,7 @@ impl DocusaurusGlossaryOptions {
         let data = json!({
             "title": module.name,
             "root": is_root,
-            "slug": self.slug.as_ref().map_or("/glossary".to_string(), |slug| format!("{slug}/{}/glossary", module.name)),
+            "slug": self.slug.clone().unwrap_or_default(),
             "items": flatten_items,
         });
 
