@@ -104,4 +104,4 @@ For more details, check out the [examples](./examples) folder.
 ## Generating your own documentation
 
 You can pretty much use any templating system to generate documentation. However, this repository already generates documents based on [handlebars](https://handlebarsjs.com/)
-for docusaurus and mdbook, you can check the [template folder](./src/handlebars) to get inspired.
+with the [handlebars-rust crate](https://github.com/sunng87/handlebars-rust) for docusaurus and mdbook. You can check the [template folder](./src/handlebars) to get inspired.
