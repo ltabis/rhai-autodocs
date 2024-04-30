@@ -6,6 +6,7 @@ slug: /api/glossary
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Link from '@docusaurus/Link';
+import CodeBlock from '@theme/CodeBlock';
 
 export const Highlight = ({ children, color }) => (
 <span style={{ backgroundColor: color, borderRadius: '2px' , color: '#000' , padding: '0.2rem' }}>
@@ -15,18 +16,30 @@ export const Highlight = ({ children, color }) => (
 
 ## global
 
-- <Link to="/docs/api/global#type-Tragedy"> <Highlight color="#C6cacb">type</Highlight> <code>Tragedy</code></Link>
-- <Link to="/docs/api/global#getset-Tragedy.age"> <Highlight color="#25c2a0">get/set</Highlight> <code>get Tragedy.age -> int</code></Link>
-- <Link to="/docs/api/global#getset-Tragedy.age"> <Highlight color="#25c2a0">get/set</Highlight> <code>set Tragedy.age = int</code></Link>
-- <Link to="/docs/api/global#getset-Tragedy.name"> <Highlight color="#25c2a0">get/set</Highlight> <code>get Tragedy.name -> string</code></Link>
-- <Link to="/docs/api/global#fn-new_romeo"> <Highlight color="#C6cacb">fn</Highlight> <code>new_romeo() -> Tragedy</code></Link>
-- <Link to="/docs/api/global#fn-new_juliet"> <Highlight color="#C6cacb">fn</Highlight> <code>new_juliet() -> Tragedy</code></Link>
-- <Link to="/docs/api/global#indexgetset-Tragedy.int"> <Highlight color="#25c2a0">index get/set</Highlight> <code>index get Tragedy[_: int] -> ?</code></Link>
-- <Link to="/docs/api/global#indexgetset-Tragedy.int"> <Highlight color="#25c2a0">index get/set</Highlight> <code>index set Tragedy[_: int] = ?</code></Link>
+- <Highlight color="#C6cacb">type</Highlight>
+<Link to="/docs/api/global#type-Tragedy"> Tragedy </Link>
+- <Highlight color="#25c2a0">get/set</Highlight>
+<Link to="/docs/api/global#getset-Tragedy.age"> get Tragedy.age -> int </Link>
+- <Highlight color="#25c2a0">get/set</Highlight>
+<Link to="/docs/api/global#getset-Tragedy.age"> set Tragedy.age = int </Link>
+- <Highlight color="#25c2a0">get/set</Highlight>
+<Link to="/docs/api/global#getset-Tragedy.name"> get Tragedy.name -> string </Link>
+- <Highlight color="#C6cacb">fn</Highlight>
+<Link to="/docs/api/global#fn-new_romeo"> new_romeo() -> Tragedy </Link>
+- <Highlight color="#C6cacb">fn</Highlight>
+<Link to="/docs/api/global#fn-new_juliet"> new_juliet() -> Tragedy </Link>
+- <Highlight color="#25c2a0">index get/set</Highlight>
+<Link to="/docs/api/global#indexgetset-Tragedy.int"> index get Tragedy[_: int] -> ? </Link>
+- <Highlight color="#25c2a0">index get/set</Highlight>
+<Link to="/docs/api/global#indexgetset-Tragedy.int"> index set Tragedy[_: int] = ? </Link>
 
 ## my_module
 
-- <Link to="/docs/api/my_module#fn-hello_world"> <Highlight color="#C6cacb">fn</Highlight> <code>hello_world()</code></Link>
-- <Link to="/docs/api/my_module#fn-hello_world"> <Highlight color="#C6cacb">fn</Highlight> <code>hello_world(message: String)</code></Link>
-- <Link to="/docs/api/my_module#fn-add"> <Highlight color="#C6cacb">fn</Highlight> <code>add(a: int, b: int) -> int</code></Link>
-- <Link to="/docs/api/my_module#type-NewType"> <Highlight color="#C6cacb">type</Highlight> <code>NewType</code></Link>
+- <Highlight color="#C6cacb">fn</Highlight>
+<Link to="/docs/api/my_module#fn-hello_world"> hello_world() </Link>
+- <Highlight color="#C6cacb">fn</Highlight>
+<Link to="/docs/api/my_module#fn-hello_world"> hello_world(message: String) </Link>
+- <Highlight color="#C6cacb">fn</Highlight>
+<Link to="/docs/api/my_module#fn-add"> add(a: int, b: int) -> int </Link>
+- <Highlight color="#C6cacb">type</Highlight>
+<Link to="/docs/api/my_module#type-NewType"> NewType </Link>
