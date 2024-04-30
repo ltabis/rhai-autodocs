@@ -102,6 +102,7 @@ impl DocusaurusGlossaryOptions {
     /// # Errors
     ///
     /// Handlebar failed to render the variables in the module documentation.
+    #[allow(clippy::missing_panics_doc)]
     pub fn generate(self, module: &Documentation) -> Result<String, handlebars::RenderError> {
         let mut hbs = handlebars::Handlebars::new();
 
@@ -130,7 +131,6 @@ impl DocusaurusGlossaryOptions {
                         let serialized = definition.display();
                         let ty = definition.type_to_str();
                         let color = match ty {
-                            "fn" => GLOSSARY_COLOR_FN,
                             "op" => GLOSSARY_COLOR_OP,
                             "get/set" => GLOSSARY_COLOR_GETSET,
                             "index get/set" => GLOSSARY_COLOR_INDEX,
@@ -166,7 +166,7 @@ impl DocusaurusGlossaryOptions {
         let mut glossary = hbs.render("docusaurus-glossary", &data)?;
 
         for module in &module.sub_modules {
-            glossary += self.generate_inner(hbs, false, &module)?.as_str();
+            glossary += self.generate_inner(hbs, false, module)?.as_str();
         }
 
         Ok(glossary)

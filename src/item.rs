@@ -147,12 +147,11 @@ impl Item {
     #[must_use]
     pub fn heading_id(&self) -> String {
         let prefix = match self {
-            Item::Function { root_metadata, .. } => root_metadata
+            Self::Function { root_metadata, .. } => root_metadata
                 .generate_function_definition()
                 .type_to_str()
-                .replace("/", "")
-                .replace(" ", ""),
-            Item::CustomType { .. } => "type".to_string(),
+                .replace(['/', ' '], ""),
+            Self::CustomType { .. } => "type".to_string(),
         };
 
         format!("{prefix}-{}", self.name())
