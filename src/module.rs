@@ -233,7 +233,7 @@ import TabItem from '@theme/TabItem';
 My own module.
 
 
-## <code>fn</code> hello_world
+## <code>fn</code> hello_world {#fn-hello_world}
 
 ```js
 fn hello_world()
@@ -246,7 +246,7 @@ fn hello_world()
     </TabItem>
 </Tabs>
 
-## <code>fn</code> add
+## <code>fn</code> add {#fn-add}
 
 ```js
 fn add(a: int, b: int) -> int
