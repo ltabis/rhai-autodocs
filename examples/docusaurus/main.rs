@@ -155,19 +155,19 @@ fn main() {
 
     // Generate a glossary from the exported docs.
     let glossary = rhai_autodocs::generate::docusaurus_glossary()
-        .with_slug("/docs/api")
+        .with_slug("/api")
         .generate(&docs)
         .unwrap();
 
     std::fs::write(
-        std::path::PathBuf::from_iter([path, &format!("glossary.mdx")]),
+        std::path::PathBuf::from_iter([path, &format!("1-glossary.mdx")]),
         glossary,
     )
     .expect("failed to write glossary");
 
     // Write the documentation in files for docusaurus.
     for (name, doc) in rhai_autodocs::generate::docusaurus()
-        .with_slug("/docs/api")
+        .with_slug("/api")
         .generate(&docs)
         .unwrap()
     {
