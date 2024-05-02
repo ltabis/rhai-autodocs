@@ -250,18 +250,21 @@ fn generate(
     hbs_registry: &handlebars::Handlebars<'_>,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
-    let data = json!({
-        "title": module.name,
-        "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
-        "description": module.documentation,
-        "namespace": module.namespace,
-        "items": module.items,
-    });
 
-    documentation.insert(
-        module.name.to_string(),
-        hbs_registry.render(template, &data)?,
-    );
+    if !module.items.is_empty() {
+        let data = json!({
+            "title": module.name,
+            "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
+            "description": module.documentation,
+            "namespace": module.namespace,
+            "items": module.items,
+        });
+
+        documentation.insert(
+            module.name.to_string(),
+            hbs_registry.render(template, &data)?,
+        );
+    }
 
     for sub in &module.sub_modules {
         documentation.extend(generate(sub, template, slug, hbs_registry)?);
