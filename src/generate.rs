@@ -17,6 +17,7 @@ pub const GLOSSARY_COLOR_INDEX: &str = "#25c2a0";
 #[derive(Default)]
 pub struct DocusaurusOptions {
     slug: Option<String>,
+    module_name: Option<String>,
 }
 
 impl DocusaurusOptions {
@@ -29,6 +30,23 @@ impl DocusaurusOptions {
     #[must_use]
     pub fn with_slug(mut self, slug: &str) -> Self {
         self.slug = Some(slug.to_string());
+
+        self
+    }
+
+    /// When registering stuff into your engine, some items will be exported in the "global" module, a module
+    /// that is accessible without the need to specify it's name. For documentation sake, you can use this method
+    /// to rename the global module so that you can split multiple items groups into multiple global modules without
+    /// having the "global" slug everywhere.
+    ///
+    /// For example, if the documentation exports items under the global namespace with
+    /// the slug `/docs/api/` and the module renamed as `my_module`, the slug set in the document will be
+    /// `/docs/api/my_module` instead of `/docs/api/global`.
+    ///
+    /// By default the root `global` module name is used.
+    #[must_use]
+    pub fn rename_root_module(mut self, name: &str) -> Self {
+        self.module_name = Some(name.to_string());
 
         self
     }
@@ -48,6 +66,11 @@ impl DocusaurusOptions {
         module: &Documentation,
     ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
         let mut hbs_registry = handlebars::Handlebars::new();
+        let mut module = module.clone();
+
+        if let Some(module_name) = self.module_name {
+            module.name = module_name;
+        }
 
         hbs_registry
             .register_template_string(
@@ -62,7 +85,7 @@ impl DocusaurusOptions {
             .expect("partial is valid");
 
         generate(
-            module,
+            &module,
             "docusaurus-module",
             self.slug.as_deref(),
             &hbs_registry,
@@ -227,18 +250,21 @@ fn generate(
     hbs_registry: &handlebars::Handlebars<'_>,
 ) -> Result<std::collections::HashMap<String, String>, handlebars::RenderError> {
     let mut documentation = std::collections::HashMap::default();
-    let data = json!({
-        "title": module.name,
-        "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
-        "description": module.documentation,
-        "namespace": module.namespace,
-        "items": module.items,
-    });
 
-    documentation.insert(
-        module.name.to_string(),
-        hbs_registry.render(template, &data)?,
-    );
+    if !module.items.is_empty() {
+        let data = json!({
+            "title": module.name,
+            "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
+            "description": module.documentation,
+            "namespace": module.namespace,
+            "items": module.items,
+        });
+
+        documentation.insert(
+            module.name.to_string(),
+            hbs_registry.render(template, &data)?,
+        );
+    }
 
     for sub in &module.sub_modules {
         documentation.extend(generate(sub, template, slug, hbs_registry)?);

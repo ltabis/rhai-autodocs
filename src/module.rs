@@ -30,7 +30,7 @@ impl std::fmt::Display for Error {
 }
 
 /// Rhai module documentation parsed from a definitions exported by a rhai engine.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Documentation {
     /// Complete path to the module.
     pub namespace: String,
@@ -212,11 +212,7 @@ mod test {
 
         let docs = crate::generate::docusaurus().generate(&docs).unwrap();
 
-        pretty_assertions::assert_eq!(
-                docs.get("global")
-                .unwrap(),
-            "---\ntitle: global\nslug: /global\n---\n\nimport Tabs from '@theme/Tabs';\nimport TabItem from '@theme/TabItem';\n\n```Namespace: global```\n\n\n\n"
-        );
+        pretty_assertions::assert_eq!(docs.get("global"), None);
 
         pretty_assertions::assert_eq!(
             docs.get("my_module").unwrap(),
