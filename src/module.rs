@@ -30,7 +30,7 @@ impl std::fmt::Display for Error {
 }
 
 /// Rhai module documentation parsed from a definitions exported by a rhai engine.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Documentation {
     /// Complete path to the module.
     pub namespace: String,
