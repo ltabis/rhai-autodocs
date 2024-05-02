@@ -45,8 +45,8 @@ impl DocusaurusOptions {
     ///
     /// By default the root `global` module name is used.
     #[must_use]
-    pub fn rename_root_module(mut self, slug: &str) -> Self {
-        self.slug = Some(slug.to_string());
+    pub fn rename_root_module(mut self, name: &str) -> Self {
+        self.module_name = Some(name.to_string());
 
         self
     }
