@@ -246,7 +246,7 @@ impl Section {
 
             match line.split_once("# ") {
                 Some((_prefix, name))
-                    if !in_code_block && line.find(RHAI_ITEM_INDEX_PATTERN).is_none() =>
+                    if !in_code_block && !line.contains(RHAI_ITEM_INDEX_PATTERN) =>
                 {
                     sections.push(Self {
                         name: std::mem::take(&mut current_name),
