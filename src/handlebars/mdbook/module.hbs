@@ -18,6 +18,7 @@
 <button group="{{item.name}}" id="link-{{item.name}}-{{section.name}}" {{#if @first}} class="tablinks active" {{else}} class="tablinks" {{/if}}
     onclick="openTab(event, '{{item.name}}', '{{section.name}}')">
 {{> ContentPartial content=section.name}}
+
 </button>
 {{/each}}
 </div>
@@ -26,6 +27,7 @@
 {{#each sections as |section|}}
 <div group="{{item.name}}" id="{{item.name}}-{{section.name}}" class="tabcontent" {{#if @first}} style="display: block;" {{else}} style="display: none;" {{/if}}>
 {{> ContentPartial content=section.body}}
+
 </div>
 {{/each}}
 
