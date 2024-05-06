@@ -239,19 +239,19 @@ impl Section {
         let mut in_code_block = false;
 
         // Start by extracting all sections from markdown comments.
-        docs.lines().fold(true, |first, line| {
+        docs.lines().for_each(|line| {
             if line.split_once("```").is_some() {
                 in_code_block = !in_code_block;
             }
 
             match line.split_once("# ") {
-                Some((_prefix, name)) if !in_code_block => {
-                    if !first {
-                        sections.push(Self {
-                            name: std::mem::take(&mut current_name),
-                            body: Item::format_comments(&current_body[..]),
-                        });
-                    }
+                Some((_prefix, name))
+                    if !in_code_block && line.find(RHAI_ITEM_INDEX_PATTERN).is_none() =>
+                {
+                    sections.push(Self {
+                        name: std::mem::take(&mut current_name),
+                        body: Item::format_comments(&current_body[..]),
+                    });
 
                     current_name = name.to_string();
                     current_body = vec![];
@@ -261,9 +261,7 @@ impl Section {
                 Some(_) => {}
                 // Append regular lines.
                 None => current_body.push(format!("{line}\n")),
-            };
-
-            false
+            }
         });
 
         sections
