@@ -266,6 +266,13 @@ impl Section {
             false
         });
 
+        if !current_body.is_empty() {
+            sections.push(Self {
+                name: std::mem::take(&mut current_name),
+                body: Item::format_comments(&current_body[..]),
+            });
+        }
+
         sections
     }
 }
