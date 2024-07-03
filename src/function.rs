@@ -64,11 +64,17 @@ fn def_type_name(ty: &str) -> Option<String> {
         .replace("&str", "String")
         .replace("ImmutableString", "String");
 
+    #[cfg(not(feature = "no_float"))]
     let ty = ty.replace(std::any::type_name::<rhai::FLOAT>(), "float");
+    #[cfg(not(feature = "no_index"))]
     let ty = ty.replace(std::any::type_name::<rhai::Array>(), "Array");
+    #[cfg(not(feature = "no_index"))]
     let ty = ty.replace(std::any::type_name::<rhai::Blob>(), "Blob");
+    #[cfg(not(feature = "no_object"))]
     let ty = ty.replace(std::any::type_name::<rhai::Map>(), "Map");
+    #[cfg(not(feature = "no_time"))]
     let ty = ty.replace(std::any::type_name::<rhai::Instant>(), "Instant");
+    #[cfg(not(feature = "no_time"))]
     let ty = ty.replace(std::any::type_name::<rhai::FnPtr>(), "FnPtr");
 
     if ty == "()" {
