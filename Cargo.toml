@@ -26,6 +26,13 @@ handlebars = { version = "5.1.0" }
 [dev-dependencies]
 pretty_assertions = "1.4.0"
 
+[features]
+default = []
+no_float = ["rhai/no_float"]
+no_index = ["rhai/no_index"]
+no_time = ["rhai/no_time"]
+no_object = ["rhai/no_object"]
+
 [[example]]
 name = "basic"
 path = "examples/basic/main.rs"

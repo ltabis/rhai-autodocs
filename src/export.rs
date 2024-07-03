@@ -121,12 +121,6 @@ pub enum SectionFormat {
     Tabs,
 }
 
-#[derive(Default, Clone, serde::Serialize)]
-struct Section {
-    pub name: String,
-    pub body: String,
-}
-
 /// Create new options used to configure docs generation.
 #[must_use]
 pub fn options() -> Options {
