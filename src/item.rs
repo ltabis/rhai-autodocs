@@ -256,11 +256,7 @@ impl Section {
                     current_name = name.to_string();
                     current_body = vec![];
                 }
-                // Do not append lines of code that starts with the '#' token,
-                // which are removed on rust docs automatically.
-                Some(_) => {}
-                // Append regular lines.
-                None => current_body.push(format!("{line}\n")),
+                Some(_) | None => current_body.push(format!("{line}\n")),
             }
         });
 
