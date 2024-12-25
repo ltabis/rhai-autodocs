@@ -18,10 +18,10 @@ keywords = [
 categories = ["development-tools"]
 
 [dependencies]
-rhai = { version = "1.19.0", features = ["metadata"] }
-serde_json = "1.0.128"
-serde = { version = "1.0.210", features = ["derive"] }
-handlebars = { version = "6.1.0" }
+rhai = { version = "1.20.1", features = ["metadata"] }
+serde_json = "1.0.134"
+serde = { version = "1.0.216", features = ["derive"] }
+handlebars = { version = "6.2.0" }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
