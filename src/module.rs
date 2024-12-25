@@ -239,6 +239,7 @@ fn hello_world()
     <TabItem value="Description" default>
 
         A function that prints to stdout.
+
     </TabItem>
 </Tabs>
 
@@ -252,6 +253,7 @@ fn add(a: int, b: int) -> int
     <TabItem value="Description" default>
 
         A function that adds two integers together.
+
     </TabItem>
 </Tabs>
 "#
