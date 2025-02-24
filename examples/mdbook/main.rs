@@ -1,4 +1,7 @@
-use rhai::plugin::*;
+use rhai::plugin::{
+    export_module, exported_module, mem, Dynamic, FnNamespace, FuncRegistration, ImmutableString,
+    Module, NativeCallContext, PluginFunc, RhaiResult, TypeId,
+};
 
 /// My own module.
 #[export_module]
@@ -40,7 +43,7 @@ mod my_module {
     ///
     /// # rhai-autodocs:index:2
     #[rhai_fn(global)]
-    pub fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
+    pub const fn add(a: rhai::INT, b: rhai::INT) -> rhai::INT {
         a + b
     }
 }

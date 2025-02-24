@@ -254,7 +254,7 @@ fn generate(
     if !module.items.is_empty() {
         let data = json!({
             "title": module.name,
-            "slug": slug.map_or(format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
+            "slug": slug.map_or_else(|| format!("/{}", module.name), |slug| format!("{}/{}", slug, module.name)),
             "description": module.documentation,
             "namespace": module.namespace,
             "items": module.items,

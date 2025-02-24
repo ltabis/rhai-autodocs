@@ -25,7 +25,7 @@ impl Metadata {
         Definition::new(
             &self.name,
             self.params.as_ref().unwrap_or(&vec![]),
-            &self.return_type,
+            self.return_type.as_deref(),
         )
     }
 }
@@ -159,7 +159,7 @@ impl Definition {
     pub fn new(
         name: &str,
         args: &[std::collections::HashMap<String, String>],
-        return_type: &Option<String>,
+        return_type: Option<&str>,
     ) -> Self {
         fn get_arg(args: &[std::collections::HashMap<String, String>], index: usize) -> Arg {
             args.get(index).map_or_else(Arg::unknown, |def| Arg {
@@ -174,7 +174,7 @@ impl Definition {
             })
         }
 
-        let return_type = return_type.as_deref().and_then(def_type_name);
+        let return_type = return_type.and_then(def_type_name);
 
         if is_operator(name) {
             Self::Operator {
