@@ -254,7 +254,7 @@ impl Definition {
                 format!("op {} {} {}", arg1.ty, name, arg2.ty)
                     + return_type
                         .as_ref()
-                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .map_or_else(|| ")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
             Self::Get {
@@ -265,7 +265,7 @@ impl Definition {
                 format!("get {}.{}", target.ty, index.name)
                     + return_type
                         .as_ref()
-                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .map_or_else(|| ")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
             Self::Set {
@@ -283,7 +283,7 @@ impl Definition {
                 format!("index get {}[{}]", target.ty, index)
                     + return_type
                         .as_ref()
-                        .map_or(")".to_string(), |rt| format!(" -> {rt}"))
+                        .map_or_else(|| ")".to_string(), |rt| format!(" -> {rt}"))
                         .as_str()
             }
             Self::IndexSet {

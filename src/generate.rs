@@ -261,7 +261,7 @@ fn generate(
         });
 
         documentation.insert(
-            module.name.to_string(),
+            module.name.clone(),
             hbs_registry.render(template, &data)?,
         );
     }
