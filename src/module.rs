@@ -37,7 +37,7 @@ pub struct Documentation {
     /// Name of the module.
     pub name: String,
     /// Sub modules.
-    pub sub_modules: Vec<Documentation>,
+    pub sub_modules: Vec<Self>,
     /// Module documentation as raw text.
     pub documentation: String,
     /// Documentation items found in the module.
@@ -88,7 +88,7 @@ fn generate_module_documentation_inner(
     metadata: &ModuleMetadata,
 ) -> Result<Documentation, Error> {
     let name = name.into();
-    let namespace = namespace.map_or(name.clone(), |namespace| namespace);
+    let namespace = namespace.unwrap_or_else(|| name.clone());
     // Format the module doc comments to make them
     // readable markdown.
     let documentation = metadata
@@ -156,9 +156,9 @@ pub(crate) fn group_functions(
         match function_groups.get_mut(&name) {
             Some(polymorphisms) => polymorphisms.push(metadata.clone()),
             None => {
-                function_groups.insert(name.to_string(), vec![metadata.clone()]);
+                function_groups.insert(name.clone(), vec![metadata.clone()]);
             }
-        };
+        }
     }
 
     function_groups
