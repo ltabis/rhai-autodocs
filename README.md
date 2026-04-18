@@ -1,5 +1,10 @@
 # rhai-autodocs
 
+[![Crates.io](https://img.shields.io/crates/v/rhai-autodocs)](https://crates.io/crates/rhai-autodocs)
+[![docs.rs](https://img.shields.io/docsrs/rhai-autodocs)](https://docs.rs/rhai-autodocs)
+[![License: MIT](https://img.shields.io/crates/l/rhai-autodocs)](LICENSE)
+[![CI](https://github.com/ltabis/rhai-autodocs/actions/workflows/ci.yml/badge.svg)](https://github.com/ltabis/rhai-autodocs/actions/workflows/ci.yml)
+
 Generate Markdown/MDX documentation from a `rhai::Engine` instance.
 
 Published with [Mdbook](https://rust-lang.github.io/mdBook/index.html).
