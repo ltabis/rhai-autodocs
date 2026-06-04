@@ -1,7 +1,4 @@
-use rhai::plugin::{
-    export_module, exported_module, mem, Dynamic, FnNamespace, FuncRegistration, ImmutableString,
-    Module, NativeCallContext, PluginFunc, RhaiResult, TypeId,
-};
+use rhai::plugin::{export_module, exported_module};
 
 /// My own module.
 #[export_module]
