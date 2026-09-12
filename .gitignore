@@ -31,3 +31,11 @@ examples/docusaurus/docusaurus-example/.env.production.local
 examples/docusaurus/docusaurus-example/npm-debug.log*
 examples/docusaurus/docusaurus-example/yarn-debug.log*
 examples/docusaurus/docusaurus-example/yarn-error.log*
+
+examples/docusaurus/docusaurus-example/.pnp.*
+examples/docusaurus/docusaurus-example/.yarn/*
+!examples/docusaurus/docusaurus-example/.yarn/patches
+!examples/docusaurus/docusaurus-example/.yarn/plugins
+!examples/docusaurus/docusaurus-example/.yarn/releases
+!examples/docusaurus/docusaurus-example/.yarn/sdks
+!examples/docusaurus/docusaurus-example/.yarn/versions
